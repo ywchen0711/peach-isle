@@ -3,6 +3,9 @@
 let A = null, master, musicBus, sfxBus, echoIn, noiseBuf;
 const waves = {};
 export const vol = { music: 0.55, sfx: 0.7 };
+// music can be switched off altogether; the volume is kept for when it comes back on
+export const music = { on: true };
+const mv = () => (music.on ? vol.music : 0);
 
 export function initAudio() {
   if (A) { if (A.state === 'suspended') A.resume(); return; }
@@ -10,7 +13,7 @@ export function initAudio() {
   master = A.createGain(); master.gain.value = 0.8;
   const lp = A.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 7000;
   master.connect(lp); lp.connect(A.destination);
-  musicBus = A.createGain(); musicBus.gain.value = vol.music; musicBus.connect(master);
+  musicBus = A.createGain(); musicBus.gain.value = mv(); musicBus.connect(master);
   sfxBus = A.createGain(); sfxBus.gain.value = vol.sfx; sfxBus.connect(master);
   // the echo that makes it sound like the cartridge sound chip
   echoIn = A.createGain(); echoIn.gain.value = 0.32;
@@ -29,7 +32,7 @@ export function initAudio() {
   if (A.state === 'suspended') A.resume();
   if (pending && el) { pending = null; el.play().catch(() => {}); }
 }
-export function setVolumes() { if (el) el.volume = Math.min(1, vol.music * 0.9); if (!A) return; musicBus.gain.value = vol.music; sfxBus.gain.value = vol.sfx; }
+export function setVolumes() { if (el) el.volume = Math.min(1, mv() * 0.9); if (!A) return; musicBus.gain.value = mv(); sfxBus.gain.value = vol.sfx; }
 
 const freq = (m) => 440 * Math.pow(2, (m - 69) / 12);
 
@@ -98,7 +101,7 @@ export function playMusic(name, { restart = false } = {}) {
   currentSong = name;
   if (!name) return;
   const a = new Audio('assets/music/' + (TRACK[name] || name) + '.ogg');
-  a.loop = name !== 'ending'; a.volume = Math.min(1, vol.music * 0.9);
+  a.loop = name !== 'ending'; a.volume = Math.min(1, mv() * 0.9);
   el = a;
   if (!A) { pending = name; return; }
   a.play().catch(() => { pending = name; });
@@ -176,4 +179,18 @@ export function sfx(name) {
     case 'quake': noise(t, 0.8, 300, 40, 0.8, 'lowpass'); sweep(t, 0.6, 80, 30, 'triangle', 0.5); break;
     case 'special': sweep(t, 0.3, 300, 1800, 0.5, 0.15); blip([84, 91, 96, 103], 'lead50', 0.1, 0.05, true); break;
   }
+}
+
+// the music switch: the button, the M key and the saved choice
+const MKEY = 'peachisle-music';
+try { music.on = localStorage.getItem(MKEY) !== 'off'; } catch (e) { /* private mode */ }
+export function setMusic(on) {
+  music.on = on; setVolumes();
+  try { localStorage.setItem(MKEY, on ? 'on' : 'off'); } catch (e) { /* private mode */ }
+  const b = document.getElementById('musicBtn'); if (b) b.classList.toggle('off', !on);
+}
+if (typeof document !== 'undefined') {
+  const b = document.getElementById('musicBtn');
+  if (b) { b.classList.toggle('off', !music.on); b.addEventListener('click', (e) => { e.stopPropagation(); initAudio(); setMusic(!music.on); }); }
+  addEventListener('keydown', (e) => { if (e.code === 'KeyM' && !e.repeat) setMusic(!music.on); });
 }

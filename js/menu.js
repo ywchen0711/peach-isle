@@ -4,7 +4,7 @@ import { sprite } from './sprites.js';
 import { ITEMS, SPELLS, HEROES, expFor } from './data.js';
 import { S, stats, spellsOf, addItem, count, save } from './party.js';
 import { menu, panel, notice, ask, pressKey } from './ui.js';
-import { sfx, vol, setVolumes } from './audio.js';
+import { sfx, vol, setVolumes, music, setMusic } from './audio.js';
 import { healAmount } from './rules.js';
 import { L, LANG, isEn, setLang } from './i18n.js';
 
@@ -166,18 +166,19 @@ async function statusMenu() {
 async function settingsMenu() {
   for (;;) {
     const lv = (v) => '■'.repeat(Math.round(v * 5)) + '□'.repeat(5 - Math.round(v * 5));
-    const r = await menu([{ label: L('音樂', 'Music'), right: lv(vol.music) }, { label: L('音效', 'Sound'), right: lv(vol.sfx) }, { label: L('掃描線', 'Scanlines'), right: settings.scan ? L('開', 'On') : L('關', 'Off') }, { label: L('語言', 'Language'), right: LANG === 'en' ? 'English' : '中文' }], { x: 60, y: 60, w: 170, title: L('設定', 'Config') });
+    const r = await menu([{ label: L('音樂', 'Music'), right: music.on ? lv(vol.music) : L('關', 'Off') }, { label: L('音效', 'Sound'), right: lv(vol.sfx) }, { label: L('掃描線', 'Scanlines'), right: settings.scan ? L('開', 'On') : L('關', 'Off') }, { label: L('語言', 'Language'), right: LANG === 'en' ? 'English' : '中文' }], { x: 60, y: 60, w: 170, title: L('設定', 'Config') });
     if (r < 0) return;
-    if (r === 0) vol.music = (Math.round(vol.music * 5) + 1) % 6 / 5;
+    // turning it up from off switches the music back on; past the top it goes off
+    if (r === 0) { if (!music.on) setMusic(true); else if (vol.music >= 1) setMusic(false); else vol.music = Math.min(1, (Math.round(vol.music * 5) + 1) / 5); }
     if (r === 1) vol.sfx = (Math.round(vol.sfx * 5) + 1) % 6 / 5;
     if (r === 2) { settings.scan = !settings.scan; document.body.classList.toggle('noscan', !settings.scan); }
     if (r === 3) setLang(LANG === 'en' ? 'zh' : 'en');
     setVolumes();
-    try { localStorage.setItem('earthfall-settings', JSON.stringify({ music: vol.music, sfx: vol.sfx, scan: settings.scan })); } catch (e) { /* private mode */ }
+    try { localStorage.setItem('peachisle-settings', JSON.stringify({ music: vol.music, sfx: vol.sfx, scan: settings.scan })); } catch (e) { /* private mode */ }
   }
 }
 export function loadSettings() {
-  try { const s = JSON.parse(localStorage.getItem('earthfall-settings')); if (s) { vol.music = s.music; vol.sfx = s.sfx; settings.scan = s.scan; document.body.classList.toggle('noscan', !s.scan); } } catch (e) { /* none */ }
+  try { const s = JSON.parse(localStorage.getItem('peachisle-settings')); if (s) { vol.music = s.music; vol.sfx = s.sfx; settings.scan = s.scan; document.body.classList.toggle('noscan', !s.scan); } } catch (e) { /* none */ }
 }
 
 // ---------- shop ----------
