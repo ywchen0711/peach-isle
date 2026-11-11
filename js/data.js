@@ -101,11 +101,32 @@ export const SPELLS = {
   revive:    { name: '喚醒之鳴', mp: 15, type: 'revive', target: 'dead', fx: 'heal' },
 };
 export const SPECIALS = {
-  peachblade:  { name: '桃源一閃', desc: '對一個敵人造成巨大傷害', target: 'enemy' },
-  howl:        { name: '月下長嚎', desc: '撲向所有敵人', target: 'enemies' },
-  monkeyrain:  { name: '百猿亂舞', desc: '一群猴子圍攻所有敵人', target: 'enemies' },
-  featherwind: { name: '千羽之風', desc: '全體回復並解除異常', target: 'allies' },
+  peachblade:  { name: '桃源一閃', desc: '必殺技（氣槽滿時）：連斬三刀，對一個敵人造成約 2.6 倍的巨大傷害。', target: 'enemy' },
+  howl:        { name: '月下長嚎', desc: '必殺技（氣槽滿時）：一聲長嚎撲向所有敵人，各造成約 1.7 倍的物理傷害。', target: 'enemies' },
+  monkeyrain:  { name: '百猿亂舞', desc: '必殺技（氣槽滿時）：叫來一群猴子圍攻，對所有敵人造成依智力計算的傷害。', target: 'enemies' },
+  featherwind: { name: '千羽之風', desc: '必殺技（氣槽滿時）：全體回復一半的 HP，並解除所有異常狀態。', target: 'allies' },
 };
+// what every skill does, shown in the skill menus
+const SPELL_DESC = {
+  peachcut:  ['聖屬性的一斬，攻擊一個敵人。怕聖屬性的妖怪和怨靈會受到加倍傷害。', 'A holy slash at one enemy. Spirits and ghosts that fear holy power take double.'],
+  blossom:   ['桃花瓣化成刀刃，以聖屬性攻擊全部敵人。', 'Peach petals turn to blades and strike every enemy with holy power.'],
+  guard:     ['靜下心來，提升自己的防禦力，持續 4 回合。', 'Steady the heart: raises your own defence for 4 turns.'],
+  bark:      ['大聲一吠，讓所有敵人有七成機率睡著（頭目無效）。睡著的敵人被打就會醒。', 'A huge bark that sends every enemy to sleep 70% of the time (not bosses). A sleeping foe wakes when hit.'],
+  bite:      ['狠狠咬住一個敵人，造成傷害。', 'Sinks teeth into one enemy.'],
+  sniffout:  ['嗅出敵人的破綻，全體夥伴力量提升，持續 4 回合。', "Sniffs out the enemy's weak spots: the whole party's strength rises for 4 turns."],
+  pebble:    ['丟石子攻擊一個敵人。花費少，隨時可用。', 'Throws a pebble at one enemy. Cheap and always handy.'],
+  swipe:     ['趁亂偷襲，攻擊全部敵人。', 'A sneak attack on every enemy.'],
+  mischief:  ['搗蛋讓敵人分心，所有敵人有七成機率睡著（頭目無效）。', 'Mischief that distracts every enemy into sleep 70% of the time (not bosses).'],
+  fruitrain: ['從樹上搖下果實，回復全體夥伴的 HP。', 'Shakes fruit down from the trees to restore everyone\'s HP.'],
+  heal:      ['溫柔的歌聲，回復一位夥伴的 HP。地圖上也能用。', "A gentle song that restores one friend's HP. Works on the map too."],
+  gust:      ['風屬性的刀刃，攻擊一個敵人。怕風的敵人受到加倍傷害。', 'A blade of wind at one enemy. Foes that fear wind take double.'],
+  cure:      ['拂去毒氣，解除一位夥伴的中毒。地圖上也能用。', 'Brushes away poison from one friend. Works on the map too.'],
+  shield:    ['張開羽毛的帳幕，全體夥伴防禦力提升，持續 4 回合。', "Spreads a veil of feathers: the whole party's defence rises for 4 turns."],
+  healall:   ['清晨的歌聲，回復全體夥伴的 HP。地圖上也能用。', "A morning song that restores everyone's HP. Works on the map too."],
+  galeforce: ['召來天狗的大風，以風屬性攻擊全部敵人。', 'Calls a tengu gale that strikes every enemy with wind.'],
+  revive:    ['響亮的一聲鳴叫，讓倒下的夥伴以一半 HP 站起來。地圖上也能用。', 'A ringing cry that gets a fallen friend back up with half their HP. Works on the map too.'],
+};
+for (const [id, [zh]] of Object.entries(SPELL_DESC)) if (SPELLS[id]) SPELLS[id].desc = zh;
 
 // art: a sheet from the pack, or 'boss:' and a boss strip; oni can be talked out of fighting
 export const ENEMIES = {
@@ -199,9 +220,10 @@ localize(SPELLS, {
   cure: ['Clean Feather'], shield: ['Feather Veil'], healall: ['Morning Song'], galeforce: ['Tengu Wind'], revive: ['Wake-Up Call'],
 });
 localize(SPECIALS, {
-  peachblade: ['Peach Flash', 'Huge damage to one enemy'], howl: ['Moonlit Howl', 'Leaps at every enemy'],
-  monkeyrain: ['Hundred Monkeys', 'A troop of monkeys mobs every enemy'], featherwind: ['Thousand Feathers', 'Heals everyone and cures ailments'],
+  peachblade: ['Peach Flash', 'Special (when the gauge is full): three cuts for huge damage to one enemy, about 2.6x.'], howl: ['Moonlit Howl', 'Special (when the gauge is full): a howl and a leap at every enemy, about 1.7x each.'],
+  monkeyrain: ['Hundred Monkeys', 'Special (when the gauge is full): a troop of monkeys mobs every enemy; damage grows with Intelligence.'], featherwind: ['Thousand Feathers', 'Special (when the gauge is full): heals everyone by half their HP and cures every ailment.'],
 });
+localize(SPELLS, Object.fromEntries(Object.entries(SPELL_DESC).map(([id, [, en]]) => [id, { desc: en }])));
 localize(ENEMIES, {
   slime: ['Goo'], mouse: ['Rice Thief'], butterfly: ['Dust Moth'], snake: ['Grass Snake'], mushroom: ['Toadstool'], bamboo: ['Bamboo Imp'], lantern: ['Lantern Ghost'],
   forestking: ['The Grudge of the Forest'], bat: ['Mountain Bat'], mole: ['Mole'], racoon: ['Tanuki Cub'], bear: ['Mountain Bear'], tanuki: ['The Tanuki King'],

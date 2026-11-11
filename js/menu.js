@@ -1,9 +1,9 @@
 // The field menu (items, magic, equipment, status, save, settings), shops and the inn.
 import { ctx, W, H, text, textW, windowBox, bar } from './gfx.js';
 import { sprite } from './sprites.js';
-import { ITEMS, SPELLS, HEROES, expFor } from './data.js';
+import { ITEMS, SPELLS, SPECIALS, HEROES, expFor } from './data.js';
 import { S, stats, spellsOf, addItem, count, save } from './party.js';
-import { menu, panel, notice, ask, pressKey } from './ui.js';
+import { menu, panel, notice, ask, pressKey, descBox } from './ui.js';
 import { sfx, vol, setVolumes, music, setMusic } from './audio.js';
 import { healAmount } from './rules.js';
 import { L, LANG, isEn, setLang } from './i18n.js';
@@ -92,7 +92,7 @@ async function magicMenu() {
   if (!caster) return;
   for (;;) {
     const list = spellsOf(caster);
-    const r = await menu(list.map((id) => ({ label: SPELLS[id].name, right: SPELLS[id].mp, disabled: !['heal', 'healall', 'cure', 'revive'].includes(id) || SPELLS[id].mp > caster.mp })), { x: 96, y: 40, w: 150, title: `${caster.name}　EP ${caster.mp}` });
+    const r = await menu(list.map((id) => ({ label: SPELLS[id].name, right: SPELLS[id].mp, disabled: !['heal', 'healall', 'cure', 'revive'].includes(id) || SPELLS[id].mp > caster.mp })), { x: 96, y: 40, w: 150, title: `${caster.name}　EP ${caster.mp}`, drawExtra: (i) => descBox(SPELLS[list[i]].desc) });
     if (r < 0) return;
     const sp = SPELLS[list[r]], st = stats(caster);
     if (sp.target === 'allies') { caster.mp -= sp.mp; for (const m of S.members) if (m.hp > 0) m.hp = Math.min(stats(m).maxhp, m.hp + healAmount(sp.power, sp.k, st)); sfx('heal'); continue; }
@@ -139,6 +139,13 @@ async function equipMenu() {
     sfx('ok');
   }
 }
+// every skill a friend knows and their special, each with what it does
+async function skillBook(m) {
+  const sp = SPECIALS[HEROES[m.id].special], ids = spellsOf(m);
+  const items = [{ label: sp.name, right: L('必殺', 'SP'), color: '#f8e070' }, ...ids.map((id) => ({ label: SPELLS[id].name, right: `${L('氣', 'Ki')} ${SPELLS[id].mp}` }))];
+  const desc = (i) => (i === 0 ? sp.desc : SPELLS[ids[i - 1]].desc);
+  await menu(items, { x: 4, y: 4, w: W - 8, maxRows: 8, title: `${m.name}　${L('招式', 'Skills')}`, drawExtra: (i) => descBox(desc(i)) });
+}
 async function statusMenu() {
   const m = await pickMember(L('查看誰的狀態？', 'Whose status?'));
   if (!m) return;
@@ -147,9 +154,9 @@ async function statusMenu() {
     windowBox(4, 4, W - 8, H - 8);
     ctx.drawImage(sprite(m.id).d[0], 14, 14);
     text(`${m.name}　${HEROES[m.id].title}`, 38, 12, '#f8e070');
+    // the title takes the first line; level, experience and what is left to the next level share the second
     text(`Lv ${m.lv}`, 38, 28);
-    const ex = isEn() ? 150 : 110;
-    text(`${L('經驗', 'EXP')} ${m.exp}`, ex, 12); text(`${L('下一級', 'Next')} ${Math.max(0, expFor(m.lv + 1) - m.exp)}`, ex, 28);
+    text(`${L('經驗', 'EXP')} ${m.exp}`, 92, 28); text(`${L('下一級', 'Next')} ${Math.max(0, expFor(m.lv + 1) - m.exp)}`, 170, 28);
     const rows = [[`HP ${m.hp}/${st.maxhp}`, `${L('氣', 'Ki')} ${m.mp}/${st.maxmp}`], [`${L('力量', 'STR')} ${st.str}`, `${L('防禦', 'DEF')} ${st.def}`], [`${L('智力', 'INT')} ${st.int}`, `${L('敏捷', 'AGI')} ${st.agi}`], [`${L('攻擊力', 'Attack')} ${st.atk}`, `${L('防禦力', 'Defence')} ${st.dfn}`]];
     rows.forEach(([a, b], i) => { text(a, 14, 50 + i * 15); text(b, 130, 50 + i * 15); });
     const en = isEn(), eq = (k) => (m.equip[k] ? ITEMS[m.equip[k]].name : '──');
@@ -159,9 +166,11 @@ async function statusMenu() {
     const sp = spellsOf(m).map((s) => SPELLS[s].name), cols = en ? 3 : 4, cw = en ? 78 : 58;
     for (let i = 0; i < sp.length; i++) text(sp[i], 14 + (i % cols) * cw, (en ? 156 : 150) + Math.floor(i / cols) * 15);
     text(L('氣', 'SP'), 14, 196, '#a0c0f8'); bar(34, 201, 100, m.gauge, 100, '#f0b030');
+    text(L('Z：查看招式說明', 'Z: read the skills'), W - 14, 196, '#a0a8c0', { align: 'right' });
   });
-  await pressKey();
+  const go = await pressKey();
   close();
+  if (go !== false) await skillBook(m);
 }
 async function settingsMenu() {
   for (;;) {

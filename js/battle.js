@@ -12,7 +12,7 @@ import { S, stats, spellsOf, gainExp, addItem, count } from './party.js';
 import { physical, magic, healAmount, foeAction } from './rules.js';
 import { input } from './input.js';
 import { sfx, playMusic } from './audio.js';
-import { UI, menu, uiTick, wrap } from './ui.js';
+import { UI, menu, uiTick, wrap, descBox } from './ui.js';
 
 let B = null;
 export const isBattle = () => !!B;
@@ -210,13 +210,13 @@ async function commandMenu(h, canBack) {
     ];
     if (combo) items.push({ label: L('四人合擊', 'Team Strike'), color: '#f8a0c0' });
     void box;
-    const r = await menu(items, { x: W - 136, y: 164 - Math.ceil(items.length / 2) * 16 - 14, w: 134, cols: 2, cancel: canBack, start: B.lastCmd && B.lastCmd[h.id] || 0 });
+    const r = await menu(items, { x: W - 136, y: 164 - Math.ceil(items.length / 2) * 16 - 14, w: 134, cols: 2, cancel: canBack, start: B.lastCmd && B.lastCmd[h.id] || 0, drawExtra: (i) => { if (i === 2) descBox(`${sp.name}：${sp.desc}`, 2); } });
     if (r < 0) return 'back';
     (B.lastCmd = B.lastCmd || {})[h.id] = r;
     if (r === 0) { const t = await pickFoe(); if (t) return { type: 'attack', target: t }; }
     if (r === 1) {
       const list = spellsOf(h);
-      const k = await menu(list.map((id) => ({ label: SPELLS[id].name, right: SPELLS[id].mp, disabled: SPELLS[id].mp > h.mp })), { x: 60, y: 30, w: 140, title: `${h.name}　${L('氣', 'Ki')} ${h.mp}`, maxRows: 6 });
+      const k = await menu(list.map((id) => ({ label: SPELLS[id].name, right: SPELLS[id].mp, disabled: SPELLS[id].mp > h.mp })), { x: 60, y: 44, w: 140, title: `${h.name}　${L('氣', 'Ki')} ${h.mp}`, maxRows: 6, drawExtra: (i) => descBox(SPELLS[list[i]].desc, 2) });
       if (k < 0) continue;
       const id = list[k], t = await pickTarget(SPELLS[id].target, h);
       if (t !== null) return { type: 'magic', id, target: t };

@@ -124,6 +124,14 @@ export function menu(items, { x = 150, y = 60, w, cols = 1, cancel = true, title
   if (onMove) onMove(m.i);
   return push(m);
 }
+// a window of explanation, wrapped to fit; used under skill and special menus
+export function descBox(s, y = H - 52) {
+  if (!s) return;
+  // a little narrower than the screen, leaving the music button in the corner clear
+  const lines = wrap(s, W - 56).slice(0, 4), h = lines.length * 14 + 10;
+  windowBox(4, Math.min(y, H - h - 2), W - 34, h);
+  lines.forEach((l, i) => text(l, 14, Math.min(y, H - h - 2) + 6 + i * 14));
+}
 export function choice(options, opts = {}) { return menu(options, { x: W - 90, y: H - 66 - options.length * 16 - 16, cancel: false, ...opts }); }
 export async function ask(name, msg, options, opts) {
   name = speaker(name);
@@ -144,6 +152,7 @@ export function notice(msg, frames = 0) {
   return push(n);
 }
 // wait for A or B
-export function pressKey() { const w = { update() { if (input.pressed('a') || input.pressed('b')) { sfx('cancel'); this.done(); } }, draw() {} }; return push(w); }
+// resolves true for A (confirm) and false for B (back)
+export function pressKey() { const w = { update() { if (input.pressed('a')) { sfx('ok'); this.done(true); } else if (input.pressed('b')) { sfx('cancel'); this.done(false); } }, draw() {} }; return push(w); }
 // wait some frames inside a script
 export function wait(frames) { const w = { t: 0, update() { if (++this.t >= frames) this.done(); }, draw() {} }; return push(w); }
