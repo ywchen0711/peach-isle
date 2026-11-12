@@ -4,6 +4,8 @@ import { L, onLang } from './i18n.js';
 
 export const S = {
   members: [], inv: {}, gold: 0, flags: {}, map: 'town', x: 0, y: 0, dir: 'd', time: 0, steps: 0,
+  // the bestiary (monsters seen and beaten) and the fish log
+  book: { seen: {}, beat: {} }, fish: {},
 };
 
 export function makeHero(id, lv = 1) {
@@ -26,11 +28,20 @@ export function stats(h) {
     atk += it.atk || 0; dfn += it.def || 0;
     for (const [k, v] of Object.entries(it.bonus || {})) s[k] += v;
   }
+  // peaches that raise a stat for good
+  for (const [k, v] of Object.entries(h.plus || {})) s[k === 'hp' ? 'maxhp' : k] += v;
   s.atk = s.str + atk * 2;
   s.dfn = s.def + dfn;
   return s;
 }
-export const spellsOf = (h) => LEARN[h.id].filter(([lv]) => h.lv >= lv).map(([, s]) => s);
+// what a friend knows: what they learned by growing, then any ninjutsu taught by a scroll
+export const spellsOf = (h) => [...LEARN[h.id].filter(([lv]) => h.lv >= lv).map(([, s]) => s), ...(h.learned || [])];
+// the elements a friend's gear guards against, and the ailments it keeps off
+export function gearOf(h) {
+  const guard = [], immune = []; let goldup = false;
+  for (const slot of ['weapon', 'armor', 'acc']) { const it = ITEMS[h.equip[slot]]; if (!it) continue; guard.push(...(it.guard || [])); immune.push(...(it.immune || [])); if (it.goldup) goldup = true; }
+  return { guard, immune, goldup };
+}
 export const alive = () => S.members.filter((m) => m.hp > 0);
 
 export function addMember(id) {
@@ -79,12 +90,13 @@ export function load(slot = 0) {
   try {
     const d = JSON.parse(localStorage.getItem(KEY + slot));
     if (!d) return false;
-    Object.assign(S, { members: [], inv: {}, flags: {} }, d);
+    Object.assign(S, { members: [], inv: {}, flags: {}, book: { seen: {}, beat: {} }, fish: {} }, d);
+    S.book = S.book || { seen: {}, beat: {} }; S.book.seen = S.book.seen || {}; S.book.beat = S.book.beat || {}; S.fish = S.fish || {};
     refreshNames();
     for (const m of S.members) S.flags[m.id] = true; // older saves never recorded who had joined
     return true;
   } catch (e) { return false; }
 }
 export function reset() {
-  Object.assign(S, { members: [], inv: { kibi: 3, millet: 3 }, gold: 50, flags: {}, map: 'home', x: 3, y: 3, dir: 'd', time: 0, steps: 0 });
+  Object.assign(S, { members: [], inv: { kibi: 3, millet: 3 }, gold: 50, flags: {}, map: 'home', x: 3, y: 3, dir: 'd', time: 0, steps: 0, book: { seen: {}, beat: {} }, fish: {} });
 }

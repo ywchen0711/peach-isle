@@ -4,6 +4,7 @@ import { ctx, W, H, text, textW, windowBox, HAND, HAND_D } from './gfx.js';
 import { input } from './input.js';
 import { sfx } from './audio.js';
 import { speaker } from './i18n.js';
+import { lazyImg } from './assets.js';
 
 const stack = [];
 export const UI = {
@@ -15,6 +16,8 @@ export const UI = {
 let frame = 0;
 export function uiTick() { frame++; }
 
+// a custom window with its own update and draw (minigames); resolves with whatever it passes to done()
+export function widget(w) { return push(w); }
 function push(w) { stack.push(w); return new Promise((res) => { w.done = (v) => { const i = stack.indexOf(w); if (i >= 0) stack.splice(i, 1); res(v); }; }); }
 
 // wrap text to a pixel width; \n forces a break
@@ -81,7 +84,7 @@ export async function talk(name, ...msgs) { for (const m of msgs) await say(name
 // items: [{ label, right, disabled, color }] or strings
 export function menu(items, { x = 150, y = 60, w, cols = 1, cancel = true, title, start = 0, onMove, rowH = 16, maxRows = 9, drawExtra } = {}) {
   items = items.map((it) => (typeof it === 'string' ? { label: it } : it));
-  const colW = w ? Math.floor((w - 20) / cols) : Math.max(...items.map((it) => textW(it.label) + (it.right ? textW(String(it.right)) + 14 : 0))) + 8;
+  const colW = w ? Math.floor((w - 20) / cols) : Math.max(...items.map((it) => textW(it.label) + (it.icon ? 16 : 0) + (it.right ? textW(String(it.right)) + 14 : 0))) + 8;
   w = w || colW * cols + 26;
   const rows = Math.ceil(items.length / cols), vis = Math.min(rows, maxRows);
   const h = vis * rowH + 12 + (title ? 16 : 0);
@@ -111,7 +114,10 @@ export function menu(items, { x = 150, y = 60, w, cols = 1, cancel = true, title
       if (title) { text(title, x + 10, oy, '#f8e070'); oy += 16; }
       for (let k = this.scroll * cols; k < Math.min(items.length, (this.scroll + vis) * cols); k++) {
         const it = items[k], cx = x + 18 + (k % cols) * colW, cy = oy + (Math.floor(k / cols) - this.scroll) * rowH;
-        text(it.label, cx, cy, it.disabled ? '#8088a8' : it.color || '#f8f8f8');
+        // an item's picture from the pack, when it has one
+        let lx = cx;
+        if (it.icon) { const im = lazyImg('assets/items/' + it.icon + '.png'); if (im) { const w2 = Math.min(16, im.width), h2 = Math.min(16, im.height); ctx.drawImage(im, 0, 0, w2, h2, cx - 1 + (16 - w2) / 2 | 0, cy - 2 + (14 - h2) / 2 | 0, w2, h2); } lx += 16; }
+        text(it.label, lx, cy, it.disabled ? '#8088a8' : it.color || '#f8f8f8');
         if (it.right !== undefined) text(String(it.right), cx + colW - 6, cy, it.disabled ? '#8088a8' : '#f8f8f8', { align: 'right' });
       }
       if (this.scroll > 0 && (frame >> 3) % 2) text('▲', x + w - 14, y + 2, '#f8e070');

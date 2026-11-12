@@ -7,6 +7,7 @@ import { menu, panel, notice, ask, pressKey, descBox } from './ui.js';
 import { sfx, vol, setVolumes, music, setMusic } from './audio.js';
 import { healAmount } from './rules.js';
 import { L, LANG, isEn, setLang } from './i18n.js';
+import { bestiary, fishLog } from './minigames.js';
 
 export const settings = { scan: true };
 const fmtTime = (t) => { const s = Math.floor(t / 60), h = Math.floor(s / 3600), m = Math.floor(s / 60) % 60; return `${h}:${String(m).padStart(2, '0')}`; };
@@ -42,7 +43,7 @@ export async function fieldMenu(ctxInfo) {
   let last = 0;
   for (;;) {
     const r = await menu([
-      L('道具', 'Items'), L('魔法', 'Magic'), L('裝備', 'Equip'), L('狀態', 'Status'), { label: L('存檔', 'Save'), disabled: !ctxInfo.canSave }, L('設定', 'Config'),
+      L('道具', 'Items'), L('魔法', 'Magic'), L('裝備', 'Equip'), L('狀態', 'Status'), { label: L('存檔', 'Save'), disabled: !ctxInfo.canSave }, L('設定', 'Config'), L('圖鑑', 'Records'),
     ], { x: 162, y: 4, w: 90, start: last });
     if (r < 0) break;
     last = r;
@@ -52,28 +53,56 @@ export async function fieldMenu(ctxInfo) {
     if (r === 3) await statusMenu();
     if (r === 4) { const ok = save(0); sfx(ok ? 'save' : 'buzz'); await notice(ok ? L('記錄完成。', 'Saved.') : L('無法存檔（瀏覽器不允許）。', "Can't save (the browser blocked it).")); }
     if (r === 5) await settingsMenu();
+    if (r === 6) await records();
   }
   close();
 }
+// the bag sorts itself: things to use, then what to cook and forge with, then gear, then treasures and keys
+const ORDER = (it) => (it.key ? 5 : it.collect ? 4 : it.slot ? 3 : it.material ? 2 : it.ingredient ? 1 : 0);
 async function itemMenu() {
   for (;;) {
-    const list = Object.keys(S.inv).sort((a, b) => (ITEMS[a].slot ? 1 : 0) - (ITEMS[b].slot ? 1 : 0));
+    const list = Object.keys(S.inv).sort((a, b) => ORDER(ITEMS[a]) - ORDER(ITEMS[b]));
     if (!list.length) { await notice(L('什麼都沒有。', 'Nothing here.')); return; }
     let desc = '';
     const close = panel(() => { windowBox(4, 186, W - 8, 34); text(desc, 14, 196); });
-    const r = await menu(list.map((id) => ({ label: ITEMS[id].name, right: ITEMS[id].key ? '' : S.inv[id] })), { x: 4, y: 4, w: W - 8, cols: 2, maxRows: 10, onMove: (i) => { const it = ITEMS[list[i]]; desc = it.desc || (it.slot ? equipDesc(it) : ''); } });
+    const r = await menu(list.map((id) => ({ label: ITEMS[id].name, right: ITEMS[id].key ? '' : S.inv[id], icon: ITEMS[id].icon })), { x: 4, y: 4, w: W - 8, cols: 2, maxRows: 10, onMove: (i) => { const it = ITEMS[list[i]]; desc = it.desc || (it.slot ? equipDesc(it) : ''); } });
     close();
     if (r < 0) return;
     const id = list[r], it = ITEMS[id];
-    if (!it.use || it.use === 'escape') { sfx('buzz'); continue; }
-    const target = await pickMember(L('給誰使用？', 'Use on whom?'), (m) => (it.use === 'revive' ? m.hp <= 0 : m.hp > 0));
+    if (!it.use || ['escape', 'attack', 'seal', 'buffall'].includes(it.use)) { sfx('buzz'); continue; }
+    // things for everyone at once
+    if (['healall', 'mpall', 'fullall', 'cureall'].includes(it.use)) { useItemOn(id, null); continue; }
+    if (it.use === 'learn') {
+      const t = await pickMember(L(`誰要學「${SPELLS[it.spell].name}」？`, `Who learns ${SPELLS[it.spell].name}?`), (m) => !spellsOf(m).includes(it.spell));
+      if (!t) continue;
+      t.learned = [...(t.learned || []), it.spell]; addItem(id, -1); sfx('level');
+      await notice(L(`${t.name}學會了「${SPELLS[it.spell].name}」！`, `${t.name} learned ${SPELLS[it.spell].name}!`));
+      continue;
+    }
+    const target = await pickMember(L('給誰使用？', 'Use on whom?'), (m) => (it.use === 'revive' ? m.hp <= 0 : it.revive ? true : m.hp > 0));
     if (!target) continue;
     useItemOn(id, target);
+    if (it.use === 'seed') await notice(L(`${target.name}的能力永久提升了！`, `${target.name} grew stronger for good!`));
   }
 }
 export function useItemOn(id, m) {
-  const it = ITEMS[id], s = stats(m);
-  if (it.use === 'heal') m.hp = Math.min(s.maxhp, m.hp + it.power);
+  const it = ITEMS[id];
+  if (!m) {
+    for (const x of S.members) {
+      const st = stats(x);
+      if (it.use === 'cureall') { x.status = {}; continue; }
+      if (x.hp <= 0) continue;
+      if (it.use === 'healall') x.hp = Math.min(st.maxhp, x.hp + it.power);
+      if (it.use === 'mpall') x.mp = Math.min(st.maxmp, x.mp + it.power);
+      if (it.use === 'fullall') { x.hp = st.maxhp; x.mp = st.maxmp; }
+    }
+    addItem(id, -1); sfx('heal'); return;
+  }
+  const s = stats(m);
+  if (it.use === 'seed') { m.plus = { ...(m.plus || {}) }; m.plus[it.stat] = (m.plus[it.stat] || 0) + it.power; addItem(id, -1); sfx('level'); return; }
+  if (it.use === 'wake') delete m.status.sleep;
+  if (it.use === 'full' && it.revive && m.hp <= 0) m.hp = 1;
+  if (it.use === 'heal') { m.hp = Math.min(s.maxhp, m.hp + it.power); if (it.cure) delete m.status.poison; }
   if (it.use === 'mp') m.mp = Math.min(s.maxmp, m.mp + it.power);
   if (it.use === 'cure') delete m.status.poison;
   if (it.use === 'revive') m.hp = Math.max(1, Math.round(s.maxhp * it.power));
@@ -88,14 +117,16 @@ function equipDesc(it) {
   return L(`${parts.join(' ')}　可裝備：${who}`, `${parts.join(' ')}  For: ${who}`);
 }
 async function magicMenu() {
-  const caster = await pickMember(L('誰要施法？', 'Who casts?'), (m) => m.hp > 0 && spellsOf(m).some((s) => ['heal', 'healall', 'cure', 'revive'].includes(s)));
+  const FIELD = ['heal', 'healall', 'cure', 'revive', 'peachheart', 'phoenixsong', 'fruitrain'];
+  const caster = await pickMember(L('誰要施法？', 'Who casts?'), (m) => m.hp > 0 && spellsOf(m).some((s) => FIELD.includes(s)));
   if (!caster) return;
   for (;;) {
     const list = spellsOf(caster);
-    const r = await menu(list.map((id) => ({ label: SPELLS[id].name, right: SPELLS[id].mp, disabled: !['heal', 'healall', 'cure', 'revive'].includes(id) || SPELLS[id].mp > caster.mp })), { x: 96, y: 40, w: 150, title: `${caster.name}　EP ${caster.mp}`, drawExtra: (i) => descBox(SPELLS[list[i]].desc) });
+    const r = await menu(list.map((id) => ({ label: SPELLS[id].name, right: SPELLS[id].mp, disabled: !FIELD.includes(id) || SPELLS[id].mp > caster.mp })), { x: 96, y: 40, w: 150, title: `${caster.name}　${L('氣', 'Ki')} ${caster.mp}`, maxRows: 7, drawExtra: (i) => descBox(SPELLS[list[i]].desc) });
     if (r < 0) return;
     const sp = SPELLS[list[r]], st = stats(caster);
-    if (sp.target === 'allies') { caster.mp -= sp.mp; for (const m of S.members) if (m.hp > 0) m.hp = Math.min(stats(m).maxhp, m.hp + healAmount(sp.power, sp.k, st)); sfx('heal'); continue; }
+    if (sp.type === 'reviveall') { caster.mp -= sp.mp; for (const m of S.members) if (m.hp <= 0) m.hp = Math.round(stats(m).maxhp * 0.5); sfx('heal'); continue; }
+    if (sp.target === 'allies') { caster.mp -= sp.mp; for (const m of S.members) if (m.hp > 0) { m.hp = Math.min(stats(m).maxhp, m.hp + healAmount(sp.power, sp.k, st)); if (sp.cure) m.status = {}; } sfx('heal'); continue; }
     const t = await pickMember(L('對誰施放？', 'Cast on whom?'), (m) => (sp.type === 'revive' ? m.hp <= 0 : m.hp > 0));
     if (!t) continue;
     caster.mp -= sp.mp; sfx('heal');
@@ -209,7 +240,7 @@ async function buy(stock) {
       windowBox(4, 158, W - 8, 62);
       if (info) info.split('\n').forEach((l, i) => text(l, 12, 164 + i * 16));
     });
-    const r = await menu(stock.map((id) => ({ label: ITEMS[id].name, right: ITEMS[id].price, disabled: ITEMS[id].price > S.gold })), {
+    const r = await menu(stock.map((id) => ({ label: ITEMS[id].name, right: ITEMS[id].price, disabled: ITEMS[id].price > S.gold, icon: ITEMS[id].icon })), {
       x: 4, y: 32, w: 160, maxRows: 6, title: L('要買什麼？', 'Buy what?'),
       onMove: (i) => {
         const it = ITEMS[stock[i]];
@@ -240,8 +271,19 @@ async function sell() {
   for (;;) {
     const list = Object.keys(S.inv).filter((id) => !ITEMS[id].key && ITEMS[id].price > 0);
     if (!list.length) { await notice(L('沒有可以賣的東西。', 'Nothing to sell.')); return; }
-    const r = await menu(list.map((id) => ({ label: `${ITEMS[id].name}×${S.inv[id]}`, right: Math.floor(ITEMS[id].price / 2) })), { x: 4, y: 32, w: 180, maxRows: 9, title: L('要賣什麼？', 'Sell what?') });
+    const r = await menu(list.map((id) => ({ label: `${ITEMS[id].name}×${S.inv[id]}`, right: Math.floor(ITEMS[id].price / 2), icon: ITEMS[id].icon })), { x: 4, y: 32, w: 200, maxRows: 9, title: L('要賣什麼？', 'Sell what?') });
     if (r < 0) return;
     addItem(list[r], -1); S.gold += Math.floor(ITEMS[list[r]].price / 2); sfx('ok');
+  }
+}
+
+// the bestiary, the fish log and the treasures found so far
+async function records() {
+  for (;;) {
+    const mg = (S.flags.magaGiven || 0) + count('magatama');
+    const r = await menu([L('妖怪圖鑑', 'Bestiary'), L('魚類圖鑑', 'Fish Log'), { label: L(`勾玉 ${mg}/12`, `Magatama ${mg}/12`), disabled: true }], { x: 96, y: 40, w: 150, title: L('圖鑑', 'Records') });
+    if (r < 0) return;
+    if (r === 0) await bestiary();
+    if (r === 1) await fishLog();
   }
 }

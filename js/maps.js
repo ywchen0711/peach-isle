@@ -5,6 +5,7 @@ import { hash } from './gfx.js';
 import { tileset } from './assets.js';
 import { ENEMIES, TROOPS } from './data.js';
 import { localize } from './i18n.js';
+export { hash };
 
 // characters shared by all maps
 const BASE = {
@@ -12,9 +13,12 @@ const BASE = {
   '_': 'wood', 'b': 'brick', 's': 'stone', 'm': 'moss', 't': 'tile', 'w': 'snow',
   'I': 'iwall', 'O': 'owall', 'C': 'cwall', 'G': 'gwall', ' ': 'void',
   'f': 'flower', 'g': 'flower2', 'h': 'flower3', 'c': 'clover', 'v': 'weed', 'n': 'bush', 'N': 'bush2', 'k': 'dbush', 'o': 'rock', 'q': 'srock', 'Q': 'crock', 'u': 'stumpt',
+  // the later chapters: open sea and islands, clouds and sky, ash and lava, swamp, coral, currents, palace floors
+  'W': 'osea', 'Y': 'iland', 'y': 'isand', 'Z': 'itree', 'E': 'fspot', 'K': 'cloud', 'J': 'cloudb', 'U': 'sky', 'a': 'ash', 'A': 'lava', 'H': 'onsen', 'P': 'pink',
+  'M': 'swamp', 'R': 'coral', '<': 'curL', '>': 'curR', '^': 'curU', 'V': 'curD', 'T': 'palace', 'F': 'tan',
 };
 // rows + legend -> a map; legend values are a tile kind or { k: kind, e: entity | (x, y, n) => entity }
-function grid(rows, legend = {}, meta = {}) {
+export function grid(rows, legend = {}, meta = {}) {
   const Lg = { ...BASE, ...legend }, h = rows.length, w = rows[0].length;
   rows.forEach((r, i) => { if (r.length !== w) throw new Error(`${meta.id} row ${i} is ${r.length} wide, not ${w}`); });
   const ents = [], kinds = [], count = {};
@@ -32,7 +36,7 @@ function grid(rows, legend = {}, meta = {}) {
   }
   return { w, h, kindAt: (x, y) => kinds[y][x], ents, ...meta };
 }
-function canvasMap(w, h, fill) {
+export function canvasMap(w, h, fill) {
   const g = Array.from({ length: h }, () => Array(w).fill(fill));
   const b = {
     g, w, h,
@@ -47,10 +51,12 @@ function canvasMap(w, h, fill) {
   };
   return b;
 }
-const warp = (to, tx, ty, dir = 'd', extra = {}) => ({ type: 'warp', to, tx, ty, dir, ...extra });
-const npc = (id, spriteName, talk, extra = {}) => ({ type: 'npc', id, sprite: spriteName, talk, ...extra });
+export const warp = (to, tx, ty, dir = 'd', extra = {}) => ({ type: 'warp', to, tx, ty, dir, ...extra });
+export const npc = (id, spriteName, talk, extra = {}) => ({ type: 'npc', id, sprite: spriteName, talk, ...extra });
 // a visible monster carrying its own troop
-const mon = (troop, extra = {}) => ({ type: 'enemy', troop: TROOPS[troop], art: ENEMIES[TROOPS[troop][0]].art, range: 4, sight: 4, ...extra });
+export const mon = (troop, extra = {}) => ({ type: 'enemy', troop: TROOPS[troop], art: ENEMIES[TROOPS[troop][0]].art, hue: ENEMIES[TROOPS[troop][0]].hue || 0, range: 4, sight: 4, ...extra });
+// a place to cast a line: pool names the kind of water (see POOLS in data2.js)
+export const fishspot = (pool) => ({ type: 'fishspot', pool });
 
 // ---------- big things: trees, houses, rocks ----------
 // [tileset, x, y, w, h] in tiles; door: the column you walk in by; foot: how many rows from the bottom are solid
@@ -62,9 +68,13 @@ export const OBJ = {
   grove: ['nature', 4, 2, 4, 3], peachgrove: ['nature', 12, 2, 4, 3], pinegrove: ['nature', 0, 2, 4, 3], bigpeach: ['nature', 0, 18, 3, 3], bigtree: ['nature', 3, 18, 3, 3],
   deadtree: ['nature', 4, 0, 2, 2], bamboo: ['nature', 11, 8, 1, 3], boulder: ['nature', 13, 8, 2, 2, { foot: 2 }], greyrock: ['nature', 16, 8, 2, 2, { foot: 2 }],
   stump: ['nature', 0, 8, 2, 2, { foot: 2 }], boat: ['water', 26, 0, 2, 1, { foot: 1 }], statue: ['house', 1, 15, 2, 3, { foot: 2 }],
+  // market stalls, palms and festival things from the desert and element sheets
+  stall: ['desert', 2, 10, 2, 2, { foot: 1 }], stall2: ['desert', 4, 10, 2, 2, { foot: 1 }], stall3: ['desert', 6, 7, 2, 3, { foot: 1 }], palm: ['desert', 10, 4, 2, 2], palm2: ['desert', 12, 4, 2, 2],
+  lantern: ['element', 6, 3, 1, 2], barrel: ['element', 1, 0, 1, 1], crate: ['element', 8, 2, 1, 1], cart: ['element', 0, 3, 2, 2, { foot: 1 }], well: ['desert', 0, 3, 2, 2, { foot: 1 }],
+  pinkpeach: ['nature', 14, 0, 2, 2],
 };
 // put an object with its top left corner at (x, y); returns the door tile for houses
-function obj(m, name, x, y, extra = {}) {
+export function obj(m, name, x, y, extra = {}) {
   const [img, sx, sy, w, h, o = {}] = OBJ[name], by = y + h - 1, foot = o.foot || 1;
   const draw = (g, X, Y) => g.drawImage(tileset(img), sx * 16, sy * 16, w * 16, h * 16, X - (extra.dx || 0), Y - (h - 1) * 16, w * 16, h * 16);
   // the picture rides on its bottom left tile, so people behind it are drawn first
@@ -81,7 +91,7 @@ function obj(m, name, x, y, extra = {}) {
   return o.door !== undefined ? [x + o.door, by] : null;
 }
 // trees along a strip, every two tiles, for the edges of a map
-function treeLine(m, x0, y0, x1, kind = 'tree') { for (let x = x0; x <= x1; x += 2) obj(m, typeof kind === 'function' ? kind(x) : kind, x, y0); }
+export function treeLine(m, x0, y0, x1, kind = 'tree') { for (let x = x0; x <= x1; x += 2) obj(m, typeof kind === 'function' ? kind(x) : kind, x, y0); }
 
 export const MAPS = {};
 
@@ -99,6 +109,7 @@ MAPS.river = {
     b.set(21, 2, 'n'); b.set(21, 4, 'n');
     const m = grid(b.rows(), {}, { id: 'river' });
     m.ents.push({ ...warp('kibi', 1, 10, 'r'), x: 21, y: 3 });
+    m.ents.push({ ...fishspot('river'), x: 12, y: 6 }, { ...fishspot('river'), x: 18, y: 6 });
     m.ents.push({ type: 'trigger', run: 'rv_grave', x: 9, y: 5, once: null, cond: (f) => !!f.ending });
     treeLine(m, 1, 9, 9, (x) => (x % 4 ? 'tree' : 'peach')); treeLine(m, 13, 9, 19, 'tree');
     obj(m, 'bigpeach', 14, 1, { cond: (f) => !!f.ending });
@@ -122,8 +133,29 @@ MAPS.kibi = {
     for (let y = 14; y <= 20; y += 2) b.rect(3, y, 12, 1, 'v');
     b.rect(16, 15, 5, 4, '~'); b.set(17, 16, 'L');
     for (const [x, y] of [[3, 8], [8, 8], [10, 13], [18, 13], [29, 7], [31, 15], [2, 21], [22, 20]]) b.set(x, y, (x + y) % 3 ? 'f' : 'g');
-    const m = grid(b.rows(), {}, { id: 'kibi' });
+    const fest = f.festival && !f.festivalOver;
+    if (fest) { b.rect(8, 11, 18, 1, 'P'); b.rect(26, 11, 2, 2, 'P'); }
+    const m = grid(b.rows(), {}, { id: 'kibi', music: fest ? 'festival' : undefined, tint: fest ? 'rgba(40,20,80,0.18)' : undefined });
     const home = obj(m, 'house', 4, 5), elder = obj(m, 'farmhouse', 12, 4), shop = obj(m, 'shop', 20, 4);
+    m.ents.push({ ...fishspot(fest ? 'festival' : 'pond'), x: 18, y: 15 });
+    m.ents.push({ type: 'dig', id: 'mgk', item: 'magatama', x: 30, y: 20 });
+    if (fest) {
+      // the first festival of humans and oni: stalls along the road, lanterns, and visitors from across the sea
+      obj(m, 'stall', 8, 12); obj(m, 'stall2', 11, 12); obj(m, 'stall3', 28, 12); obj(m, 'stall', 23, 12);
+      for (const x of [7, 15, 19, 25, 31]) obj(m, 'lantern', x, 8);
+      m.ents.push(
+        npc('mochiman', 'Caveman', 'fe_mochi', { x: 9, y: 14, dir: 'u' }),
+        npc('goldfish', 'Child', 'fe_goldfish', { x: 19, y: 14, dir: 'd' }),
+        npc('festshop', 'Cavegirl2', 'fe_shop', { x: 12, y: 14, dir: 'u' }),
+        npc('omikuji', 'Monk2', 'fe_omikuji', { x: 29, y: 15, dir: 'u' }),
+        npc('festgoki', 'DemonGreen', 'fe_goki', { x: 16, y: 9, dir: 'd' }),
+        npc('festakane', 'akane', 'fe_akane', { x: 26, y: 16, dir: 'd' }),
+        npc('festkid', 'Cavegirl', 'fe_onikid', { x: 22, y: 9, dir: 'l', wander: true }),
+        npc('festgranny', 'grandma', 'fe_granny', { x: 6, y: 9, dir: 'd' }),
+        npc('festgrandpa', 'grandpa', 'fe_grandpa', { x: 4, y: 9, dir: 'r' }),
+      );
+      for (const id of ['shiro', 'natsume', 'kiji']) void id;
+    }
     obj(m, 'torii', 25, 13); obj(m, 'shrine', 24, 18);
     m.ents.push({ ...warp('home', 4, 5, 'u'), x: home[0], y: home[1] });
     m.ents.push({ type: 'solid', talk: 'kb_elderdoor', x: elder[0], y: elder[1] });
@@ -133,6 +165,9 @@ MAPS.kibi = {
     treeLine(m, 1, 1, 3, 'peach'); treeLine(m, 28, 1, 31, 'tree'); treeLine(m, 1, 21, 13, (x) => (x % 4 ? 'tree' : 'tree2'));
     obj(m, 'peach', 30, 18); obj(m, 'oak', 28, 21);
     // the villagers
+    // Genji's widow, and the ones who come home after the ending
+    if (f.act2 && !f.festival) m.ents.push(npc('grannyK', 'grandma', 'kb_granny2', { x: 7, y: 8, dir: 'd' }), npc('grandpaK', 'grandpa', 'kb_grandpa2', { x: 3, y: 8, dir: 'r' }));
+    if (f.kageForgiven && f.widowLetter) m.ents.push(npc('kageK', 'NinjaMasked', 'kb_kage', { x: 11, y: 9, dir: 'l' }));
     m.ents.push(
       npc('elder', 'Master', 'kb_elder', { x: 13, y: 7, dir: 'd' }),
       npc('shopkeep', 'Villager3', 'kb_shop', { x: 21, y: 7, dir: 'd' }),
@@ -190,6 +225,7 @@ MAPS.world = {
     b.road([[24, 14], [34, 14], [34, 12]]);
     b.road([[24, 22], [24, 30], [38, 30]]);
     b.road([[16, 22], [16, 31], [9, 31]]);
+    b.road([[16, 29], [23, 29], [23, 32]]);
     for (let x = 9; x <= 14; x++) b.set(x, 12, '='), b.set(11, 13, '=');
     // a river crossing the plain, with a bridge
     for (let y = 15; y <= 36; y++) { const x = 30 + Math.round(Math.sin(y * 0.35) * 1.2); b.set(x, y, '~'); b.set(x + 1, y, '~'); }
@@ -207,12 +243,17 @@ MAPS.world = {
     obj(m, 'torii', 8, 29); m.ents.push({ ...warp('cliff', 12, 29, 'u'), x: 9, y: 30 });
     m.ents.push({ type: 'solid', talk: 'w_cliffwind', x: 10, y: 31, cond: (fl) => !fl.captainAsked });
     m.ents.push({ type: 'solid', talk: 'w_bridgeguard', x: 27, y: 30, cond: (fl) => !fl.natsume });
+    // the Fog Valley, through an old torii in the south
+    obj(m, 'torii', 22, 32);
+    m.ents.push({ ...warp('fogvale', 17, 30, 'u'), x: 23, y: 33, cond: (fl) => !!fl.act2 });
+    m.ents.push({ type: 'solid', talk: 'w_fog', x: 23, y: 33, cond: (fl) => !fl.act2 });
     // the forest and mountain look the part
     for (let y = 2; y <= 12; y += 3) for (let x = 2; x <= 17; x += 3) if (b.get(x, y) === 'k' && b.get(x + 1, y + 1) === 'k') obj(m, (x + y) % 2 ? 'pine' : 'tree', x, y);
     for (let y = 2; y <= 11; y += 3) for (let x = 27; x <= 42; x += 4) if (b.get(x, y) === ':' && b.get(x + 1, y + 1) === ':' && Math.abs(x - 34) > 2) obj(m, (x + y) % 2 ? 'boulder' : 'greyrock', x, y);
     for (const [x, y] of [[3, 28], [6, 33], [12, 34]]) obj(m, 'greyrock', x, y);
     for (const [x, y] of [[18, 25], [21, 16], [26, 25], [13, 18], [36, 18], [40, 20], [20, 35], [27, 34]]) obj(m, (x * y) % 3 ? 'tree' : 'tree2', x, y);
     m.enc = (x, y) => (y < 14 && x > 24 ? 'hills' : x > 34 || (y > 26 && x < 16) ? 'coast' : 'home');
+    for (const [x, y] of [[20, 33], [26, 33]]) obj(m, 'deadtree', x, y);
     m.entry = [9, 22, 'r'];
     void f;
     return m;
@@ -265,6 +306,7 @@ MAPS.forest = {
     m.ents.push({ type: 'sprite', x: 18, y: 21, solid: true, talk: 'fo_grave', draw: (g, X, Y) => g.drawImage(tileset('house'), 2 * 16, 18 * 16, 16, 16, X, Y, 16, 16) });
     m.ents.push(npc('shiro', 'shiro', 'fo_shiro', { x: 19, y: 22, dir: 'l', cond: (fl) => !fl.shiro }));
     m.ents.push({ type: 'trigger', run: 'fo_meet', once: 'forestMeet', x: 14, y: 22 });
+    m.ents.push({ type: 'dig', id: 'mgf', item: 'magatama', x: 22, y: 3 });
     for (const [x, y] of [[2, 1], [6, 1], [16, 1], [24, 1], [2, 14], [6, 9], [10, 9], [16, 14], [22, 14], [3, 19], [20, 19]]) obj(m, (x + y) % 3 ? 'pine' : 'tree', x, y);
     obj(m, 'bamboo', 22, 7); obj(m, 'bamboo', 20, 7);
     m.entry = [14, 23, 'u'];
@@ -323,6 +365,7 @@ MAPS.mountain = {
     m.ents.push(npc('natsume', 'natsume', 'mo_natsume', { x: 13, y: 24, dir: 'd', cond: (fl) => !fl.natsume }));
     m.ents.push(npc('babymonkey', 'MonkeyBrown', 'mo_baby', { x: 16, y: 25, dir: 'l', cond: (fl) => !fl.ending }), npc('babymonkey2', 'MonkeyBrown', 'mo_baby', { x: 17, y: 26, dir: 'l', cond: (fl) => !fl.ending }));
     m.ents.push({ type: 'trigger', run: 'mo_enter', once: 'mountainIn', x: 4, y: 26 });
+    m.ents.push({ type: 'dig', id: 'mgm', item: 'magatama', x: 10, y: 13 }, { type: 'dig', id: 'mgm2', item: 'chestnut', x: 20, y: 24 }, { type: 'dig', id: 'mgm3', item: 'chestnut', x: 6, y: 20 });
     for (const [x, y] of [[2, 23], [22, 23], [24, 25], [6, 25]]) obj(m, (x + y) % 2 ? 'tree' : 'pine', x, y);
     obj(m, 'boulder', 9, 17); obj(m, 'greyrock', 20, 18); obj(m, 'boulder', 3, 7);
     m.entry = [3, 26, 'u'];
@@ -346,6 +389,8 @@ MAPS.port = {
     obj(m, 'boat', 26, 15);
     m.ents.push({ ...warp('world', 38, 31, 'd', { exit: true }), x: 0, y: 10 }, { ...warp('world', 38, 31, 'd', { exit: true }), x: 0, y: 11 });
     m.ents.push({ type: 'solid', talk: 'pt_inndoor', x: inn[0], y: inn[1] }, { type: 'hearth', x: 9, y: 7 });
+    m.ents.push({ ...fishspot('sea'), x: 22, y: 13 }, { ...fishspot('sea'), x: 28, y: 10 });
+    m.ents.push({ type: 'dig', id: 'mgp', item: 'magatama', x: 3, y: 18 });
     m.ents.push({ type: 'solid', talk: 'pt_shopdoor', x: shop[0], y: shop[1] });
     m.ents.push(
       npc('captain', 'Eskimo', 'pt_captain', { x: 25, y: 12, dir: 'l' }),
@@ -418,7 +463,10 @@ MAPS.cliff = {
     m.ents.push({ type: 'solid', talk: 'cl_gate', x: 12, y: 6, cond: (fl) => !fl.cliffGate });
     m.ents.push({ ...warp('world', 9, 31, 'd', { exit: true }), x: 12, y: 30 }, { ...warp('world', 9, 31, 'd', { exit: true }), x: 13, y: 30 });
     m.ents.push(npc('kiji', 'kiji', 'cl_kiji', { x: 15, y: 27, dir: 'l', cond: (fl) => !fl.kiji }));
+    m.ents.push(npc('redtengu', 'Tengu', 'cl_redtengu', { x: 9, y: 2, dir: 'r', cond: (fl) => !!fl.act2 }));
+    m.ents.push({ type: 'updraft', id: 'windroad', x: 15, y: 2, to: 'skyvillage', tx: 14, ty: 19, cond: (fl) => !!fl.windRoad });
     m.ents.push({ type: 'trigger', run: 'cl_enter', once: 'cliffIn', x: 12, y: 28 });
+    m.ents.push({ type: 'dig', id: 'mgc', item: 'magatama', x: 20, y: 23 });
     obj(m, 'torii', 11, 25); obj(m, 'shrine', 11, 0);
     for (const [x, y] of [[3, 26], [20, 26], [4, 1], [19, 1]]) obj(m, 'pine', x, y);
     m.entry = [12, 29, 'u'];
@@ -457,9 +505,15 @@ MAPS.isle = {
     const m = grid(b.rows(), {
     }, { id: 'isle' });
     obj(m, 'boat', 16, 27);
-    m.ents.push({ ...warp('port', 24, 12, 'l'), x: 18, y: 26, cond: (fl) => !!fl.boss5 });
+    m.ents.push({ ...warp('port', 24, 12, 'l'), x: 18, y: 26, cond: (fl) => !!fl.boss5 && !fl.sailing });
+    m.ents.push({ ...warp('sea', 26, 24, 'd'), x: 18, y: 26, cond: (fl) => !!fl.sailing });
     // the oni village
-    const elder = obj(m, 'straw', 5, 13), store = obj(m, 'hut', 10, 18); obj(m, 'straw', 21, 18); obj(m, 'cave', 24, 12);
+    const elder = obj(m, 'straw', 5, 13), store = obj(m, 'hut', 10, 18); obj(m, 'straw', 21, 18);
+    const dojo = obj(m, 'cave', 24, 12);
+    m.ents.push({ ...warp('dojo', 9, 12, 'u'), x: dojo[0], y: dojo[1], cond: (fl) => !!fl.act2 });
+    m.ents.push({ type: 'solid', talk: 'is_cave', x: dojo[0], y: dojo[1], cond: (fl) => !fl.act2 });
+    // the gate to the Land of Endless Night opens under the sacred tree
+    m.ents.push({ type: 'seal', talk: 'is_gate', x: 17, y: 5, cond: (fl) => !!fl.festivalOver && !fl.ending });
     m.ents.push({ type: 'solid', talk: 'is_elderhut', x: elder[0], y: elder[1] }, { type: 'solid', talk: 'is_storehut', x: store[0], y: store[1] });
     // the sacred tree, withered until the end
     obj(m, f.ending ? 'bigpeach' : 'deadtree', 16, f.ending ? 2 : 3);
@@ -469,7 +523,9 @@ MAPS.isle = {
     m.ents.push({ ...warp('fort', 14, 33, 'u'), x: keep[0], y: keep[1], cond: (fl) => !!fl.akaneTold });
     m.ents.push({ type: 'solid', talk: 'is_fortshut', x: keep[0], y: keep[1], cond: (fl) => !fl.akaneTold });
     m.ents.push(
-      npc('akane', 'akane', 'is_akane', { x: 17, y: 9, dir: 'd', cond: (fl) => !!fl.boss5 && !fl.akaneJoinedTree }),
+      npc('akane', 'akane', 'is_akane', { x: 17, y: 9, dir: 'd', cond: (fl) => !!fl.boss5 && !fl.akaneJoinedTree && !(fl.festival && !fl.festivalOver) }),
+      npc('oniFather', 'Caveman2', 'is_father', { x: 23, y: 22, dir: 'u', cond: (fl) => !!fl.fatherHome }),
+      npc('homuraI', 'DemonRed', 'is_homura', { x: 28, y: 16, dir: 'l', cond: (fl) => !!fl.redeemed_homuramaru && !!fl.jewel_fire }),
       npc('oniElder', 'Shaman', 'is_elder', { x: 6, y: 17, dir: 'd' }),
       npc('oniKid', 'Cavegirl', 'is_kid', { x: 13, y: 21, dir: 'l' }),
       npc('oniMother', 'Cavegirl2', 'is_mother', { x: 22, y: 22, dir: 'u' }),
@@ -478,6 +534,9 @@ MAPS.isle = {
       npc('goki', 'DemonGreen', 'is_goki', { x: 26, y: 15, dir: 'l', cond: (fl) => !!fl.boss5 }),
     );
     m.ents.push({ type: 'hearth', x: 8, y: 17 });
+    m.ents.push({ type: 'dig', id: 'mgi', item: 'magatama', x: 31, y: 24 });
+    // branches the sacred tree let fall, once the curse has eased
+    m.ents.push({ type: 'dig', id: 'isd0', item: 'peachwood', x: 14, y: 6, cond: (fl) => !!fl.act2 }, { type: 'dig', id: 'isd1', item: 'peachwood', x: 20, y: 5, cond: (fl) => !!fl.jewel3 });
     m.ents.push({ type: 'trigger', run: 'is_landing', once: 'landed', x: 17, y: 24 });
     m.ents.push({ type: 'trigger', run: 'is_landing', once: 'landed', x: 16, y: 24 });
     m.ents.push({ type: 'trigger', run: 'is_landing', once: 'landed', x: 18, y: 24 });
@@ -555,3 +614,5 @@ localize(MAPS, {
   river: ['The Peach River'], kibi: ['Kibi Village'], forest: ['White Fang Forest'], mountain: ['Monkey-Cry Mountain'], port: ['Shiomi Harbour'],
   cliff: ['The Tengu Cliffs'], ship: ['The Oni Sea'], isle: ['The Oni Isle'], fort: ['Kurogane Fortress'],
 }, ['name']);
+// a map can change its music with the flags (the festival)
+export const mapMusic = (def, built) => (built && built.music) || def.music;

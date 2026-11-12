@@ -12,6 +12,7 @@ import { S } from './party.js';
 import { UI } from './ui.js';
 
 const DIRS = { up: [0, -1, 'u'], down: [0, 1, 'd'], left: [-1, 0, 'l'], right: [1, 0, 'r'] };
+const CURRENT = { curL: 'l', curR: 'r', curU: 'u', curD: 'd' };
 const DV = { u: [0, -1], d: [0, 1], l: [-1, 0], r: [1, 0] };
 const SPEED = 2; // pixels per frame, 8 frames per tile
 
@@ -124,6 +125,8 @@ function entsAt(x, y) { return F.ents.filter((e) => !e.gone && e.x === x && e.y 
 function entSolid(e) {
   switch (e.type) {
     case 'npc': case 'chest': case 'block': case 'save': case 'sign': case 'spring': case 'boss': case 'hearth': case 'perch': case 'bellpost': return true;
+    case 'updraft': case 'fishspot': case 'seal': return true;
+    case 'scent': return false;
     case 'vine': return true;
     case 'dig': return false;
     case 'gate': return !e.open;
@@ -221,6 +224,8 @@ function tryMove(d) {
   const nx = p.x + dx, ny = p.y + dy;
   const blk = entAt(nx, ny, (e) => e.type === 'block' && !e.moving);
   if (blk) {
+    // only Natsume, once she has found her strength, can shift the great boulders
+    if (!(S.flags.natsumeStrong && S.members.some((m) => m.id === 'natsume'))) { if (!F.busy && F.frame - (F.rockT || -999) > 90) { F.rockT = F.frame; F.runScript('heavyrock', blk); } return false; }
     if (pushBlock(blk, dx, dy)) { startStep(nx, ny); return true; }
     return false;
   }
@@ -252,6 +257,12 @@ function finishStep() {
   if (kindAt(p.x, p.y) === 'ice') {
     const [dx, dy] = DV[p.dir];
     if (!blocked(p.x + dx, p.y + dy) && !entAt(p.x + dx, p.y + dy, (e) => e.type === 'block')) { p.slide = true; startStep(p.x + dx, p.y + dy); sfx('slide'); return; }
+  }
+  // an undersea current sweeps you along until something stops you
+  const cur = CURRENT[kindAt(p.x, p.y)];
+  if (cur) {
+    const [dx, dy] = DV[cur];
+    if (!blocked(p.x + dx, p.y + dy)) { p.slide = true; startStep(p.x + dx, p.y + dy); if (F.frame % 3 === 0) sfx('slide'); return; }
   }
   p.slide = false;
   // random encounters on the world map
@@ -345,7 +356,7 @@ function interact() {
   if (TILES[kindAt(tx, ty)] && kindAt(tx, ty) === 'counter') { tx += dx; ty += dy; }
   const pipe = F.ents.find((o) => !o.gone && o.x === tx && o.y === ty && o.type === 'pipe');
   if (pipe) { if (pipe.fixed) { sfx('buzz'); return; } pipe.rot = (pipe.rot + 1) % 4; sfx('switch'); checkPower(); return; }
-  const e = F.ents.find((o) => !o.gone && o.x === tx && o.y === ty && ['npc', 'chest', 'save', 'sign', 'spring', 'boss', 'solid', 'sink', 'source', 'hearth', 'dig', 'vine', 'perch', 'bellpost'].includes(o.type) && (o.talk || ['chest', 'save', 'spring', 'hearth', 'dig', 'vine', 'perch', 'bellpost'].includes(o.type)));
+  const e = F.ents.find((o) => !o.gone && o.x === tx && o.y === ty && ['npc', 'chest', 'save', 'sign', 'spring', 'boss', 'solid', 'sink', 'source', 'hearth', 'dig', 'vine', 'perch', 'bellpost', 'updraft', 'fishspot', 'seal'].includes(o.type) && (o.talk || ['chest', 'save', 'spring', 'hearth', 'dig', 'vine', 'perch', 'bellpost', 'updraft', 'fishspot', 'seal'].includes(o.type)));
   if (!e) return;
   if (e.type === 'npc') {
     // face the player
@@ -386,7 +397,11 @@ export function drawField() {
   const party = F.hideParty ? [] : S.members.slice(0, F.solo ? 1 : 4); // cutscenes stand the others up as NPCs
   const p = F.p;
   const walk = p.moving || F.busy && p.walking;
-  party.forEach((m, i) => {
+  if (F.map.boat && !F.hideParty) {
+    // on the open sea the four ride the captain's boat
+    if (p.dir === 'l' || p.dir === 'r') F.boatDir = p.dir;
+    list.push({ type: 'boat', px: p.px, py: p.py, dir: F.boatDir || 'r' });
+  } else party.forEach((m, i) => {
     const t = i === 0 ? { px: p.px, py: p.py, dir: p.dir } : F.trail[Math.min(F.trail.length - 1, i * 8)];
     const dead = m.hp <= 0;
     list.push({ type: 'hero', sprite: m.id, px: t.px, py: t.py, dir: t.dir, walking: walk, order: -i, dead });
@@ -401,6 +416,13 @@ export function drawField() {
     ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
   }
   if (F.map.tint) { ctx.fillStyle = F.map.tint; ctx.fillRect(0, 0, W, H); }
+  // the Fog Valley: thick white fog with a little clear space around you
+  if (F.map.fog) {
+    const g = ctx.createRadialGradient(p.px - cx + 8, p.py - cy + 4, 24, p.px - cx + 8, p.py - cy + 4, 120);
+    g.addColorStop(0, 'rgba(228,234,238,0)'); g.addColorStop(0.5, 'rgba(228,234,238,0.55)'); g.addColorStop(1, 'rgba(228,234,238,0.92)');
+    ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+    ctx.fillStyle = 'rgba(255,255,255,0.18)'; for (let k = 0; k < 6; k++) { const x = ((F.frame * (0.2 + k * 0.05) + k * 61) % (W + 80)) - 40; ctx.fillRect(Math.round(x), 30 + k * 30, 70, 6); }
+  }
   // the place name when you arrive
   if (F.banner > 0 && F.def.name) {
     const a = Math.min(1, F.banner / 20, (150 - F.banner) / 12 + 0.01);
@@ -426,6 +448,18 @@ function drawEnt(e, cx, cy) {
       break;
     }
     case 'chest': ctx.drawImage(tileset('dungeon'), (e.open ? 3 : 2) * 16, 16, 16, 16, x, y, 16, 16); break;
+    case 'boat': {
+      const img = tileset('boatbig'), bob = Math.round(Math.sin(F.frame / 14));
+      ctx.save(); ctx.translate(x + 8, y + 8 + bob); if (e.dir === 'l') ctx.scale(-1, 1);
+      ctx.drawImage(img, -40, -18, 80, 32); ctx.restore();
+      const fr = sprite('momo')[e.dir][0]; ctx.drawImage(fr, x + (e.dir === 'l' ? 6 : -6), y - 14 + bob);
+      ctx.fillStyle = 'rgba(255,255,255,0.6)'; for (let k = 0; k < 3; k++) ctx.fillRect(x + (e.dir === 'l' ? 40 + k * 5 : -28 - k * 5), y + 12 + ((F.frame >> 2) + k) % 3, 3, 1);
+      break;
+    }
+    case 'updraft': { const k = F.frame % 40; ctx.fillStyle = 'rgba(200,240,255,0.25)'; ctx.fillRect(x + 2, y + 2, 12, 12); for (let i = 0; i < 4; i++) { const yy = y + 14 - ((k * 0.6 + i * 6) % 22); ctx.fillStyle = i % 2 ? '#e8f8ff' : '#a8d8f8'; ctx.fillRect(x + 3 + Math.round(Math.sin((yy + i * 9) / 4) * 3) + 4, yy, 3, 1); } ctx.fillStyle = '#f8f8ff'; ctx.fillRect(x + 6, y + 12, 4, 2); break; }
+    case 'fishspot': { const k = (F.frame + e.x * 13) % 90; if (k < 60) { ctx.strokeStyle = `rgba(255,255,255,${0.7 - k / 90})`; ctx.beginPath(); ctx.ellipse(x + 8, y + 9, 2 + k / 10, 1 + k / 22, 0, 0, Math.PI * 2); ctx.stroke(); } if ((F.frame >> 4) % 6 === 0) { ctx.fillStyle = 'rgba(20,30,60,0.5)'; ctx.fillRect(x + 5, y + 8, 6, 2); } break; }
+    case 'scent': if (S.flags.shiroTrack && S.members.some((m) => m.id === 'shiro')) { const a = 0.5 + 0.3 * Math.sin((F.frame + e.n * 9) / 12); ctx.fillStyle = `rgba(250,236,170,${a})`; const o = e.n % 2 ? 3 : -3; for (const [dx, dy] of [[5 + o, 6], [8 + o, 5], [11 + o, 6], [8 + o, 9]]) ctx.fillRect(x + dx, y + dy, dx === 8 + o && dy === 9 ? 3 : 2, 2); } break;
+    case 'seal': { const k = Math.sin(F.frame / 10); ctx.fillStyle = `rgba(248,160,200,${0.35 + k * 0.15})`; ctx.fillRect(x, y - 8, 16, 24); ctx.strokeStyle = '#f8e0f0'; ctx.strokeRect(x + 2.5, y - 5.5, 11, 19); ctx.fillStyle = '#fff0f8'; ctx.fillRect(x + 7, y - 2 + Math.round(k * 2), 2, 10); ctx.fillRect(x + 4, y + 3 + Math.round(k * 2), 8, 2); break; }
     case 'hearth': { ctx.drawImage(tileset('house'), 31 * 16, 10 * 16, 16, 16, x, y, 16, 16); if (F.frame % 24 < 12) { ctx.fillStyle = '#f8a030'; ctx.fillRect(x + 6, y + 12, 4, 2); } ctx.fillStyle = 'rgba(255,255,255,0.5)'; const k = F.frame % 60; ctx.fillRect(x + 7 + Math.round(Math.sin(k / 9) * 2), y - k / 8, 2, 2); break; }
     case 'dig': if (!e.done) { ctx.fillStyle = 'rgba(70,40,20,0.55)'; ctx.fillRect(x + 4, y + 9, 8, 4); ctx.fillRect(x + 3, y + 10, 10, 2); if ((F.frame + e.x * 7) % 50 < 8) { ctx.fillStyle = '#fff8c0'; ctx.fillRect(x + 7, y + 6, 2, 2); ctx.fillRect(x + 5, y + 8, 1, 1); ctx.fillRect(x + 10, y + 8, 1, 1); } } break;
     case 'vine': for (let k = 0; k < 16; k += 2) { ctx.fillStyle = k % 4 ? '#3a8a38' : '#58b048'; ctx.fillRect(x + 7 + Math.round(Math.sin((k + e.x) / 3) * 2), y + k - 8, 2, 2); if (k % 6 === 0) { ctx.fillStyle = '#78c858'; ctx.fillRect(x + 9 + Math.round(Math.sin((k + e.x) / 3) * 2), y + k - 8, 3, 2); } } break;

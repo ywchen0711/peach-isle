@@ -35,7 +35,25 @@ const grassLike = (base, tufts) => (g, X, Y) => {
 };
 const decor = (under, img, x, y) => (g, X, Y, n, f) => { TILES[under].draw(g, X, Y, n, f); g.drawImage(tileset(img), x * 16, y * 16, 16, 16, 0, 0, 16, 16); };
 const same = (a, b) => a === b;
-const watery = (a) => a === 'water' || a === 'sea' || a === 'deep' || a === 'lily';
+const watery = (a) => a === 'water' || a === 'sea' || a === 'deep' || a === 'lily' || a === 'osea' || a === 'fspot';
+const swampy = (a) => a === 'swamp';
+const springy = (a) => a === 'onsen';
+// a plain colour with a scatter of specks: lava, the sky, the void between clouds
+const speckle = (base, specks, k = 0.12, solidK = 0) => (g, X, Y) => {
+  g.fillStyle = base; g.fillRect(0, 0, 16, 16);
+  for (let i = 0; i < 6; i++) { if (hash(X * 7 + i, Y * 5, 11) < k + solidK) { g.fillStyle = specks[i % specks.length]; const sx = Math.floor(hash(X, Y, 20 + i) * 13), sy = Math.floor(hash(X, Y, 40 + i) * 13); g.fillRect(sx, sy, 2 + (i % 3), 1 + (i % 2)); } }
+};
+// a current drawn as chevrons pointing the way it flows
+const current = (dir) => (g, X, Y) => {
+  g.drawImage(tileset('floor'), 16, 16, 16, 16, 0, 0, 16, 16);
+  g.fillStyle = 'rgba(80,170,240,0.55)'; g.fillRect(0, 0, 16, 16);
+  g.fillStyle = 'rgba(230,250,255,0.85)';
+  for (let k = 0; k < 2; k++) for (let i = 0; i < 4; i++) {
+    const a = 3 + k * 8, b = 4 + i * 2 - 3;
+    const pts = { r: [a + Math.abs(b - 1), 4 + i * 2], l: [12 - a - Math.abs(b - 1) + 2, 4 + i * 2], d: [4 + i * 2, a + Math.abs(b - 1)], u: [4 + i * 2, 12 - a - Math.abs(b - 1) + 2] }[dir];
+    g.fillRect(pts[0], pts[1], 2, 1);
+  }
+};
 
 export const TILES = {
   grass: { draw: grassLike([0, 12], [[1, 12], [2, 12], [3, 12], [4, 12]]) },
@@ -74,6 +92,38 @@ export const TILES = {
   srock: { solid: true, draw: decor('sand', 'nature', 4, 13) },
   crock: { solid: true, draw: decor('stone', 'nature', 5, 12) },
   stumpt: { solid: true, draw: decor('grass', 'nature', 4, 8) },
+  // ---- the later chapters ----
+  // the open sea you can sail on, and the islands in it
+  osea: { draw: PATCH('water', 0, 0, watery) },
+  fspot: { solid: true, draw: PATCH('water', 0, 6, watery) },
+  iland: { solid: true, draw: grassLike([0, 12], [[1, 12], [2, 12], [3, 12]]) },
+  isand: { solid: true, draw: cut('floor', 1, 1) },
+  itree: { solid: true, draw: decor('grass', 'nature', 0, 10) },
+  // clouds to walk on, and the sky between them
+  cloud: { draw: (g, X, Y, n) => { g.fillStyle = '#88c4f4'; g.fillRect(0, 0, 16, 16); PATCH('floor', 0, 14, (a) => a === 'cloud' || a === 'cloudb')(g, X, Y, n); } },
+  cloudb: { draw: (g, X, Y, n) => { TILES.cloud.draw(g, X, Y, n); g.drawImage(tileset('water'), 5 * 16, 13 * 16, 16, 16, 0, 0, 16, 16); } },
+  sky: { solid: true, draw: speckle('#88c4f4', ['#c8e8ff', '#ffffff', '#a8d8fc'], 0.1) },
+  // the volcano: ash underfoot, lava on every side
+  ash: { draw: (g) => { g.drawImage(tileset('floor'), 16 * 16, 16 * 16, 16, 16, 0, 0, 16, 16); g.fillStyle = 'rgba(60,20,10,0.35)'; g.fillRect(0, 0, 16, 16); } },
+  lava: { solid: true, draw: speckle('#b82810', ['#f87818', '#f8c030', '#e05010', '#f8e070'], 0.45) },
+  onsen: { solid: true, draw: PATCH('water', 13, 0, springy) },
+  pink: { draw: PATCH('floor', 11, 0, same) },
+  swamp: { solid: true, draw: PATCH('water', 13, 6, swampy) },
+  // under the sea: coral standing on the sand, and currents that carry you
+  // coral in a few shapes and colours: branching, a fan, a cluster of tubes, or a plain rock
+  coral: { solid: true, draw: (g, X, Y) => {
+    g.drawImage(tileset('floor'), 16, 16, 16, 16, 0, 0, 16, 16);
+    const c = ['#f86080', '#f8a040', '#c060f0', '#f87858'][Math.floor(hash(X, Y, 3) * 4)], k = Math.floor(hash(X, Y, 5) * 4), ox = Math.floor(hash(X, Y, 6) * 4) - 2;
+    g.fillStyle = c;
+    if (k === 0) { g.fillRect(7 + ox, 4, 2, 11); g.fillRect(4 + ox, 7, 2, 6); g.fillRect(10 + ox, 6, 2, 7); g.fillRect(5 + ox, 12, 7, 2); }
+    else if (k === 1) { g.beginPath(); g.arc(8 + ox, 10, 6, Math.PI, 0); g.fill(); g.fillRect(7 + ox, 10, 2, 5); g.fillStyle = 'rgba(255,255,255,0.35)'; for (let i = 0; i < 4; i++) g.fillRect(4 + ox + i * 2, 6 + (i % 2), 1, 3); }
+    else if (k === 2) { for (const [x, h] of [[4, 8], [7, 11], [10, 7]]) { g.fillRect(x + ox, 15 - h, 2, h); g.fillStyle = '#ffffff'; g.fillRect(x + ox, 15 - h, 2, 1); g.fillStyle = c; } }
+    else { g.fillStyle = '#7888a0'; g.beginPath(); g.ellipse(8, 11, 6, 4, 0, 0, 7); g.fill(); g.fillStyle = '#a8b8c8'; g.fillRect(5, 8, 4, 2); }
+  } },
+  curL: { draw: current('l') }, curR: { draw: current('r') }, curU: { draw: current('u') }, curD: { draw: current('d') },
+  palace: { draw: cut('interiorfloor', 16, 7) },
+  tan: { draw: cut('interiorfloor', 16, 1) },
+  pinkwall: { solid: true, draw: RING('wallsimple', 0, 0) },
 };
 
 // ---------- map pre-rendering ----------

@@ -7,12 +7,16 @@ import { initAudio, playMusic, stopMusic, sfx, currentSong } from './audio.js';
 import { UI, uiTick, say, talk, ask, wait, menu, notice, wrap } from './ui.js';
 import { S, reset, addMember, addItem, fullHeal, save, load, hasSave, setSpellNamer, stats } from './party.js';
 import { SPELLS, GROUPS, TROOPS } from './data.js';
+import './data2.js';
+import { ENEMIES as ENEMIES_ } from './data.js';
 import { MAPS } from './maps.js';
+import './maps2.js';
 import { F, setMaps, loadMap, updateField, drawField, walkEnt, walkPlayer, findEnt } from './field.js';
-import { renderMap } from './tiles.js';
+import { renderMap, solidKind } from './tiles.js';
 import { startBattle, updateBattle, drawBattle, _B } from './battle.js';
 import { fieldMenu, shop, loadSettings } from './menu.js';
 import { SCRIPTS } from './story.js';
+import { hearts } from './story2.js';
 import { sprite } from './sprites.js';
 import { tileset } from './assets.js';
 import { L, LANG, isEn, setLang, onLang } from './i18n.js';
@@ -62,7 +66,7 @@ function drawTrans() {
 const FX = { flash: 0, flashN: 1, flashCol: '#fff' };
 
 // ---------- the toolbox handed to story scripts ----------
-const mapMusic = () => (F.def.music);
+const mapMusic = () => (F.map && F.map.music) || F.def.music;
 const E = {
   say, talk, ask, wait, sfx,
   music: (n) => (n ? playMusic(n) : stopMusic(0.6)),
@@ -134,7 +138,7 @@ F.onEncounter = async (zone) => {
   const table = GROUPS[zone], total = table.reduce((s, [w]) => s + w, 0);
   let r = Math.random() * total, troop = table[0][1];
   for (const [w, t] of table) { r -= w; if (r <= 0) { troop = t; break; } }
-  await runBattle(troop, { bg: { hills: 'mountain', coast: 'shore' }[zone] || 'field' });
+  await runBattle(troop, { bg: { hills: 'mountain', coast: 'shore', sea: 'sea', islet: 'islet', postworld: 'fog' }[zone] || 'field' });
   F.busy = false;
 };
 F.onTouchEnemy = async (foe) => {
@@ -162,7 +166,9 @@ async function runBattle(troop, opts = {}) {
   scene = 'battle';
   T.dark = 0;
   const r = await startBattle(troop, opts);
-  if (r === 'lose') { gameOver(); return new Promise(() => {}); }
+  // the dojo: losing there only hurts your pride
+  if (r === 'lose' && opts.safe) { for (const m of S.members) m.hp = Math.max(1, m.hp); }
+  else if (r === 'lose') { gameOver(); return new Promise(() => {}); }
   scene = 'field';
   T.dark = 1;
   playMusic(mapMusic(), { restart: true });
@@ -354,32 +360,44 @@ async function ending() {
   T.col = '#000';
   await wait(30);
   F.busy = true;
-  try { await SCRIPTS.epilogue(E); } catch (err) { console.error(err); }
+  if (S.flags.trueEnding) playMusic('trueend', { restart: true });
+  try { await (S.flags.trueEnding ? SCRIPTS.epilogueTrue : SCRIPTS.epilogue)(E); } catch (err) { console.error(err); }
   F.busy = false;
   await wait(40);
   await trans('out', 60);
   F.hideParty = false;
   scene = 'credits'; credits.t = 0;
   T.dark = 0;
-  save(1);
+  // after the credits the adventure carries on: everyone is home in Kibi, and the bottom of the night is open
+  S.flags.cleared = true; fullHeal();
+  Object.assign(S, { map: 'kibi', x: 5, y: 8, dir: 'd' });
+  save(1); save(0);
 }
 const CREDITS_ZH = [
   ['桃源鬼島記', 'big'], [''], ['PEACHLING AND THE ONI ISLE'], [''], [''],
   ['— 登場人物 —', 'y'], ['桃丸　從桃子裡生的孩子'], ['小白　獵人源治的狗'], ['棗　猿啼山的母猴'], ['雉　不敢飛的雉雞'], [''],
-  ['梅奶奶　竹爺爺'], ['茜　守護神木的巫女'], ['剛鬼　鬼的將軍'], ['赤天狗　海坊主　狸大王'], ['黑鐵大將　青鬼大將'], ['黍之里、潮見港與鬼之島的人們'], [''], [''],
-  ['美術、音樂'], ['Ninja Adventure Asset Pack'], ['by Pixel-boy & AAA (CC0)'], [''], ['故事、程式'], ['原創作品'], [''], ['字型：俐方體11號 (Cubic 11)'], [''], [''],
+  ['梅奶奶　竹爺爺'], ['茜　守護神木的巫女'], ['剛鬼　鬼的將軍'], ['焰丸　守護火之根的赤鬼'], ['影丸　源治撿回來的孩子'], ['汐音　龍宮的公主'], ['赤天狗　青天狗　海坊主'], ['狸大王　海龍蒼淵　炎王'], ['黑鐵大將　青鬼大將'], ['玄冥　被逐出的守木人'], ['黍之里、潮見港、鬼之島'], ['焰之鄉、雲之里與龍宮的人們'], [''], [''],
+  ['美術、音樂、效果'], ['Ninja Adventure Asset Pack'], ['by Pixel-boy & AAA (CC0)'], [''], ['故事、程式'], ['原創作品'], [''], ['字型：俐方體11號 (Cubic 11)'], [''], [''],
   ['神木又開花了。'], ['每年春天，'], ['桃子都會順著河漂回家。'], [''], [''],
   ['感謝你的遊玩！', 'y'], [''], [''], ['—— 完 ——', 'big'],
 ];
+const CREDITS_TRUE_ZH = ['神木用好多好多人的心醒來了。', '桃丸留在了黍之里，', '每年春天，和大家一起吃糰子。'];
+const CREDITS_TRUE_EN = ['The sacred tree woke on many, many hearts.', 'Momomaru stayed in Kibi,', 'and every spring he eats dumplings with everyone.'];
 const CREDITS_EN = [
   ['PEACHLING', 'big'], [''], ['and the Oni Isle'], [''], ['桃源鬼島記'], [''], [''],
   ['- CAST -', 'y'], ['Momomaru - the boy born from a peach'], ["Shiro - Genji the hunter's dog"], ['Natsume - a monkey of the mountain'], ['Kiji - the pheasant who would not fly'], [''],
-  ['Granny Ume   Grandpa Take'], ['Akane - keeper of the sacred tree'], ['Goki - general of the oni'], ['The Red Tengu   The Umibozu'], ['The Tanuki King'], ['Lord Kurogane   The Blue General'], ['and the people of Kibi,'], ['Shiomi and the Oni Isle'], [''], [''],
-  ['Art and music'], ['Ninja Adventure Asset Pack'], ['by Pixel-boy & AAA (CC0)'], [''], ['Story and code'], ['an original game'], [''], ['Font: Cubic 11'], [''], [''],
+  ['Granny Ume   Grandpa Take'], ['Akane - keeper of the sacred tree'], ['Goki - general of the oni'], ['Homuramaru - the red oni of the fire root'], ['Kagemaru - the boy Genji took in'], ['Shione - princess of the Dragon Palace'], ['The Red Tengu   The Blue Tengu'], ['The Umibozu   The Tanuki King'], ['Soen the Sea Dragon   The Flame King'], ['Lord Kurogane   The Blue General'], ['Genmei - the banished tree-keeper'], ['and the people of Kibi, Shiomi,'], ['the Oni Isle, Homura, the clouds'], ['and the Dragon Palace'], [''], [''],
+  ['Art, music and effects'], ['Ninja Adventure Asset Pack'], ['by Pixel-boy & AAA (CC0)'], [''], ['Story and code'], ['an original game'], [''], ['Font: Cubic 11'], [''], [''],
   ['The sacred tree blooms again.'], ['And every spring'], ['a peach floats home down the river.'], [''], [''],
   ['THANK YOU FOR PLAYING!', 'y'], [''], [''], ['THE END', 'big'],
 ];
-const creditList = () => (isEn() ? CREDITS_EN : CREDITS_ZH);
+// the true ending says something else at the close
+const creditList = () => {
+  const base = isEn() ? CREDITS_EN : CREDITS_ZH;
+  if (!S.flags.trueEnding) return base;
+  const i = base.findIndex(([t]) => t === (isEn() ? 'The sacred tree blooms again.' : '神木又開花了。'));
+  return [...base.slice(0, i), ...(isEn() ? CREDITS_TRUE_EN : CREDITS_TRUE_ZH).map((t) => [t]), ...base.slice(i + 3)];
+};
 const credits = { t: 0 };
 function updateCredits() {
   credits.t++;
@@ -464,6 +482,7 @@ requestAnimationFrame(frame);
 boot();
 
 // debugging hooks for automated checks
+G.hearts = hearts; G.solidKind = solidKind; G.MAPS = MAPS; G.ENEMIES = ENEMIES_;
 G.T = T; G._B = _B; G.UI = UI; G.newGame = newGame; G.continueGame = continueGame; G.loadMap = loadMap; G.trans = trans; G.runBattle = runBattle; G.E = E; G.addMember = addMember; G.stats = stats;
 G.go = (map, x, y) => { scene = 'field'; T.dark = 0; if (x === undefined) { const m = MAPS[map].build(S.flags); [x, y] = m.entry || [Math.floor(m.w / 2), m.h - 2]; } loadMap(map, x, y, 'd'); playMusic(MAPS[map].music); };
 void menu; void notice; void currentSong; void fromGrid; void wrap; void TROOPS;

@@ -9,7 +9,30 @@ const STRIP = {
   DemonCyclop: [50, 50, 5], DemonCyclop2: [50, 50, 5], GiantBamboo: [62, 62, 6], GiantFlam: [50, 50, 5], GiantFrog2: [40, 40, 5],
   GiantRacoon: [60, 60, 6], GiantRacoonGold: [60, 60, 6], GiantRedSamurai: [96, 48, 6], GiantBlueSamurai: [96, 48, 6],
   GiantSlime: [62, 52, 5], GiantSpirit: [50, 50, 5], SquidRed: [76, 79, 4], SquidGreen: [76, 79, 4], TenguRed: [82, 82, 6], TenguBlue: [68, 68, 6],
+  GiantBamboo2: [62, 62, 6], GiantFrog: [40, 40, 5], GiantSlime2: [62, 52, 5],
 };
+// a dragon is put together from its parts: two wings behind, a trail of body rings, the tail tip and the head in front.
+// Four frames: the wings beat and the head bobs.
+function dragon(name) {
+  const P = (p) => IMG['d:' + name + p];
+  const frames = [0, -2, -3, -1].map((dy, k) => {
+    const c = canvas(170, 112), g = c.x, wing = P('Wing');
+    g.save(); g.translate(38 + 57, dy); g.scale(-1, 1); g.drawImage(wing, 0, 0); g.restore();
+    g.drawImage(wing, 112, dy);
+    g.drawImage(P('BodyEnd'), 6, 70);
+    const rings = [[20, 70, 'Body2'], [34, 60, 'Body1'], [50, 54, 'Body2'], [64, 46, 'Body1']];
+    for (const [x, y, part] of rings) g.drawImage(P(part), x, y + Math.round(Math.sin((x + k * 20) / 14)));
+    g.drawImage(P('Head'), 82, 14 + (k % 2 ? -1 : 0));
+    return c;
+  });
+  const a = frames[0]; a.frames = frames; a.fs = 1; return a;
+}
+// people in battle (ninja, monks) are their sheet's right-facing walk: 'char:' at twice size, 'charB:' as a boss
+function person(name, big) {
+  const img = IMG['c:' + name] || IMG['c:Villager'];
+  const frames = [0, 1, 2, 3].map((r) => cut(img, 48, r * 16, 16, 16));
+  const a = frames[0]; a.frames = frames; a.fs = big ? 3.5 : 2; return a;
+}
 const cache = new Map();
 function cut(img, sx, sy, w, h) { const c = canvas(w, h); c.x.drawImage(img, sx, sy, w, h, 0, 0, w, h); return c; }
 function recolor(src, hue, sat) {
@@ -30,6 +53,9 @@ function recolor(src, hue, sat) {
   return c;
 }
 function build(key) {
+  if (key.startsWith('dragon:')) return dragon(key.slice(7));
+  if (key.startsWith('char:')) return person(key.slice(5), false);
+  if (key.startsWith('charB:')) return person(key.slice(6), true);
   if (key.startsWith('boss:')) {
     const n = key.slice(5), img = IMG['b:' + n], [w, h, k] = STRIP[n];
     const frames = Array.from({ length: k }, (_, i) => cut(img, i * w, 0, w, h));

@@ -90,7 +90,7 @@ function drum(kind, t, v, out) {
 
 // ---------- music: recorded tracks from the Ninja Adventure pack (CC0) ----------
 // a few story moments reuse a track under another name; 'victory' is a short jingle
-const TRACK = { town: 'village', tower: 'temple', gameover: 'lament', victory: null };
+const TRACK = { town: 'village', tower: 'temple', gameover: 'lament', victory: null, battle2: 'dojo' };
 const JINGLE = { victory: 'victory' };
 let el = null, pending = null;
 export let currentSong = null;
@@ -101,7 +101,7 @@ export function playMusic(name, { restart = false } = {}) {
   currentSong = name;
   if (!name) return;
   const a = new Audio('assets/music/' + (TRACK[name] || name) + '.ogg');
-  a.loop = name !== 'ending'; a.volume = Math.min(1, mv() * 0.9);
+  a.loop = name !== 'ending' && name !== 'trueend'; a.volume = Math.min(1, mv() * 0.9);
   el = a;
   if (!A) { pending = name; return; }
   a.play().catch(() => { pending = name; });
