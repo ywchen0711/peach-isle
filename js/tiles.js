@@ -18,7 +18,9 @@ const RING = (img, bx, by) => (g, X, Y, n) => {
   const fl = (dx, dy) => { const k = n(dx, dy); return !!(k && TILES[k] && !TILES[k].solid); };
   const N = fl(0, -1), S = fl(0, 1), Wt = fl(-1, 0), E = fl(1, 0);
   let c = null;
-  if (S && !N) c = [Wt ? 0 : E ? 4 : 2, 0];
+  // a single wall tile with floor above and below (a ledge a vine climbs): the wall's lower face
+  if (N && S) c = [2, 4];
+  else if (S && !N) c = [Wt ? 0 : E ? 4 : 2, 0];
   else if (N && !S) c = [Wt ? 0 : E ? 4 : 2, 4];
   else if (E) c = [0, 2];
   else if (Wt) c = [4, 2];
@@ -33,7 +35,13 @@ const grassLike = (base, tufts) => (g, X, Y) => {
   const t = hash(X, Y, 7) < 0.16 ? tufts[Math.floor(hash(X, Y, 8) * tufts.length)] : base;
   g.drawImage(tileset('floor'), t[0] * 16, t[1] * 16, 16, 16, 0, 0, 16, 16);
 };
-const decor = (under, img, x, y) => (g, X, Y, n, f) => { TILES[under].draw(g, X, Y, n, f); g.drawImage(tileset(img), x * 16, y * 16, 16, 16, 0, 0, 16, 16); };
+// a flower or bush on grass takes the darker grass when most of its neighbours are dark grass
+const darkish = (k) => k === 'dgrass' || k === 'dbush' || k === 'dpath';
+const decor = (under, img, x, y) => (g, X, Y, n, f) => {
+  let u = under;
+  if (under === 'grass' && [[0, -1], [0, 1], [-1, 0], [1, 0]].filter(([dx, dy]) => darkish(n(dx, dy))).length >= 2) u = 'dgrass';
+  TILES[u].draw(g, X, Y, n, f); g.drawImage(tileset(img), x * 16, y * 16, 16, 16, 0, 0, 16, 16);
+};
 const same = (a, b) => a === b;
 const watery = (a) => a === 'water' || a === 'sea' || a === 'deep' || a === 'lily' || a === 'osea' || a === 'fspot';
 const swampy = (a) => a === 'swamp';
@@ -65,7 +73,8 @@ export const TILES = {
   // ponds have grassy banks, the sea a sandy shore; both are solid
   water: { solid: true, draw: PATCH('water', 0, 6, watery) },
   sea: { solid: true, draw: PATCH('water', 0, 0, watery) },
-  deep: { solid: true, draw: cut('water', 1, 1) },
+  // deep water: open water in the middle, a shore where it meets anything else (moats, chasms, the reef)
+  deep: { solid: true, draw: PATCH('water', 0, 0, watery) },
   lily: { solid: true, draw: (g, X, Y, n, f) => { TILES.water.draw(g, X, Y, n, f); g.drawImage(tileset('water'), 11 * 16, 3 * 16, 16, 16, 0, 0, 16, 16); } },
   plank: { draw: cut('water', 5, 13) },
   // indoors
@@ -106,7 +115,12 @@ export const TILES = {
   // the volcano: ash underfoot, lava on every side
   ash: { draw: (g) => { g.drawImage(tileset('floor'), 16 * 16, 16 * 16, 16, 16, 0, 0, 16, 16); g.fillStyle = 'rgba(60,20,10,0.35)'; g.fillRect(0, 0, 16, 16); } },
   lava: { solid: true, draw: speckle('#b82810', ['#f87818', '#f8c030', '#e05010', '#f8e070'], 0.45) },
-  onsen: { solid: true, draw: PATCH('water', 13, 0, springy) },
+  // a hot spring: clear water in a sandy rim, with wisps of steam (the pack's frozen pond read as ice)
+  onsen: { solid: true, draw: (g, X, Y, n) => {
+    PATCH('water', 0, 0, springy)(g, X, Y, n);
+    g.fillStyle = 'rgba(255,255,255,0.55)';
+    for (let i = 0; i < 2; i++) if (hash(X, Y, 30 + i) < 0.6) { const sx = 3 + Math.floor(hash(X, Y, 32 + i) * 9), sy = 3 + i * 6 + Math.floor(hash(X, Y, 34 + i) * 3); g.fillRect(sx, sy, 3, 1); g.fillRect(sx + 1, sy - 1, 2, 1); g.fillRect(sx - 1, sy - 2, 2, 1); }
+  } },
   pink: { draw: PATCH('floor', 11, 0, same) },
   swamp: { solid: true, draw: PATCH('water', 13, 6, swampy) },
   // under the sea: coral standing on the sand, and currents that carry you

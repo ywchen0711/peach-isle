@@ -112,10 +112,12 @@ export function menu(items, { x = 150, y = 60, w, cols = 1, cancel = true, title
       windowBox(x, y, w, h);
       let oy = y + 6;
       if (title) { text(title, x + 10, oy, '#f8e070'); oy += 16; }
+      // when some entries have a picture, the ones without keep the same indent so the names line up
+      const anyIcon = items.some((q) => q.icon);
       for (let k = this.scroll * cols; k < Math.min(items.length, (this.scroll + vis) * cols); k++) {
         const it = items[k], cx = x + 18 + (k % cols) * colW, cy = oy + (Math.floor(k / cols) - this.scroll) * rowH;
         // an item's picture from the pack, when it has one
-        let lx = cx;
+        let lx = cx + (anyIcon && !it.icon ? 16 : 0);
         if (it.icon) { const im = lazyImg('assets/items/' + it.icon + '.png'); if (im) { const w2 = Math.min(16, im.width), h2 = Math.min(16, im.height); ctx.drawImage(im, 0, 0, w2, h2, cx - 1 + (16 - w2) / 2 | 0, cy - 2 + (14 - h2) / 2 | 0, w2, h2); } lx += 16; }
         text(it.label, lx, cy, it.disabled ? '#8088a8' : it.color || '#f8f8f8');
         if (it.right !== undefined) text(String(it.right), cx + colW - 6, cy, it.disabled ? '#8088a8' : '#f8f8f8', { align: 'right' });

@@ -35,6 +35,7 @@ const pairs = [
   ...['DragonBlue', 'DragonGreen'].flatMap((d) => DRAGON_PARTS.map((p) => ['d:' + d + p, 'assets/boss/' + d + '_' + p + '.png'])),
   ...Object.keys(FX).map((n) => ['x:' + n, 'assets/fx/' + n + '.png']),
   ...FACES.map((n) => ['f:' + n, 'assets/face/' + n + '.png']),
+  ['i:chest', 'assets/items/LittleTreasureChest.png'],
 ];
 const got = await Promise.all(pairs.map(([, src]) => load(src)));
 export const IMG = Object.fromEntries(pairs.map(([k], i) => [k, got[i]]));

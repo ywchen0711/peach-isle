@@ -19,7 +19,9 @@ function dragon(name) {
     const c = canvas(170, 112), g = c.x, wing = P('Wing');
     g.save(); g.translate(38 + 57, dy); g.scale(-1, 1); g.drawImage(wing, 0, 0); g.restore();
     g.drawImage(wing, 112, dy);
-    g.drawImage(P('BodyEnd'), 6, 70);
+    // the tail tip points down on its sheet; turn it to point left, along the trail, its wide end tucked under the last ring
+    const tip = P('BodyEnd');
+    g.save(); g.translate(24, 84); g.rotate(Math.PI / 2); g.drawImage(tip, -(tip.width >> 1), -(tip.height >> 1)); g.restore();
     const rings = [[20, 70, 'Body2'], [34, 60, 'Body1'], [50, 54, 'Body2'], [64, 46, 'Body1']];
     for (const [x, y, part] of rings) g.drawImage(P(part), x, y + Math.round(Math.sin((x + k * 20) / 14)));
     g.drawImage(P('Head'), 82, 14 + (k % 2 ? -1 : 0));

@@ -69,8 +69,8 @@ export const OBJ = {
   deadtree: ['nature', 4, 0, 2, 2], bamboo: ['nature', 11, 8, 1, 3], boulder: ['nature', 13, 8, 2, 2, { foot: 2 }], greyrock: ['nature', 16, 8, 2, 2, { foot: 2 }],
   stump: ['nature', 0, 8, 2, 2, { foot: 2 }], boat: ['water', 26, 0, 2, 1, { foot: 1 }], statue: ['house', 1, 15, 2, 3, { foot: 2 }],
   // market stalls, palms and festival things from the desert and element sheets
-  stall: ['desert', 2, 10, 2, 2, { foot: 1 }], stall2: ['desert', 4, 10, 2, 2, { foot: 1 }], stall3: ['desert', 6, 7, 2, 3, { foot: 1 }], palm: ['desert', 10, 4, 2, 2], palm2: ['desert', 12, 4, 2, 2],
-  lantern: ['element', 6, 3, 1, 2], barrel: ['element', 1, 0, 1, 1], crate: ['element', 8, 2, 1, 1], cart: ['element', 0, 3, 2, 2, { foot: 1 }], well: ['desert', 0, 3, 2, 2, { foot: 1 }],
+  stall: ['desert', 2, 10, 2, 2, { foot: 1 }], stall2: ['desert', 4, 10, 2, 2, { foot: 1 }], stall3: ['desert', 6, 7, 2, 2, { foot: 1 }], palm: ['desert', 10, 10, 2, 2], palm2: ['desert', 12, 10, 2, 2],
+  lantern: ['element', 6, 3, 1, 2], barrel: ['element', 1, 0, 1, 1], crate: ['element', 0, 0, 1, 1], cart: ['element', 0, 3, 2, 2, { foot: 1 }], well: ['desert', 0, 3, 2, 2, { foot: 1 }],
   pinkpeach: ['nature', 14, 0, 2, 2],
 };
 // put an object with its top left corner at (x, y); returns the door tile for houses
@@ -141,7 +141,7 @@ MAPS.kibi = {
     m.ents.push({ type: 'dig', id: 'mgk', item: 'magatama', x: 30, y: 20 });
     if (fest) {
       // the first festival of humans and oni: stalls along the road, lanterns, and visitors from across the sea
-      obj(m, 'stall', 8, 12); obj(m, 'stall2', 11, 12); obj(m, 'stall3', 28, 12); obj(m, 'stall', 23, 12);
+      obj(m, 'stall', 8, 12); obj(m, 'stall2', 11, 12); obj(m, 'stall3', 28, 13); obj(m, 'stall', 23, 12);
       for (const x of [7, 15, 19, 25, 31]) obj(m, 'lantern', x, 8);
       m.ents.push(
         npc('mochiman', 'Caveman', 'fe_mochi', { x: 9, y: 14, dir: 'u' }),
@@ -195,7 +195,7 @@ MAPS.home = {
     m.ents.push({ type: 'hearth', x: 2, y: 1 });
     m.ents.push(npc('grandpa', 'grandpa', 'hm_grandpa', { x: 6, y: 2, dir: 'd', cond: (f) => !f.leftHome || f.ending }));
     m.ents.push(npc('grandma', 'grandma', 'hm_grandma', { x: 3, y: 3, dir: 'r', cond: (f) => !f.leftHome || f.ending }));
-    m.ents.push({ type: 'sprite', x: 6, y: 4, solid: true, draw: (g, X, Y) => g.drawImage(tileset('house'), 19 * 16, 10 * 16, 16, 16, X, Y, 16, 16) });
+    m.ents.push({ type: 'sprite', x: 6, y: 4, solid: true, draw: (g, X, Y) => g.drawImage(tileset('house'), 18 * 16, 13 * 16, 16, 16, X, Y, 16, 16) });
     m.entry = [4, 5, 'u'];
     return m;
   },
@@ -568,7 +568,7 @@ MAPS.fort = {
       'GDDDDDDDDDDDDDDDDDDDDDDDDDDDDG',
       'GDDDDDDDDDDDDDDDDDDDDDDDDDDDDG',
       'GsssssssssssssssssssssssssssGG',
-      'Gsssssp:ssssssssssssssessssGGG',
+      'GssssspsssssssssssssssessssGGG',
       'GsssssssssssssssssssssssssssGG',
       'GGGGGGGGGGGGGGgGGGGGGGGGGGGGGG',
       'GsssssssssGGssssssGGssssssssGG',

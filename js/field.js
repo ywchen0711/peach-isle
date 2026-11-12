@@ -3,7 +3,7 @@
 import { ctx, W, H, canvas, fromGrid, text, textW, windowBox, Painter, ramp, hash, fine } from './gfx.js';
 import { renderMap, solidKind, TILES } from './tiles.js';
 import { sprite } from './sprites.js';
-import { tileset } from './assets.js';
+import { tileset, IMG } from './assets.js';
 import { miniArt, enemyArt } from './enemies.js';
 const fineOf = (a) => (a.fs ? fine(a.fs) : 1);
 import { input } from './input.js';
@@ -447,7 +447,8 @@ function drawEnt(e, cx, cy) {
       ctx.globalAlpha = 1;
       break;
     }
-    case 'chest': ctx.drawImage(tileset('dungeon'), (e.open ? 3 : 2) * 16, 16, 16, 16, x, y, 16, 16); break;
+    // the pack's little treasure chest: shut on the left, open on the right
+    case 'chest': { const im = IMG['i:chest']; if (im) ctx.drawImage(im, e.open ? 16 : 0, 0, 16, 16, x, y, 16, 16); else ctx.drawImage(chestArt(!!e.open), x, y); break; }
     case 'boat': {
       const img = tileset('boatbig'), bob = Math.round(Math.sin(F.frame / 14));
       ctx.save(); ctx.translate(x + 8, y + 8 + bob); if (e.dir === 'l') ctx.scale(-1, 1);
@@ -482,7 +483,8 @@ function drawEnt(e, cx, cy) {
     case 'source': ctx.drawImage(sourceArt((F.frame >> 2) % 3), x, y - 4); break;
     case 'sink': ctx.drawImage(sinkArt(!!e.lit, (F.frame >> 3) % 2), x, y - 4); break;
     case 'sprite': if (e.draw) e.draw(ctx, x, y, F.frame); break;
-    case 'sign': if (e.sprite === 'stone') { ctx.drawImage(stoneArt(), x, y - 4); if (F.frame % 50 < 25) { ctx.fillStyle = '#c0fff8'; ctx.fillRect(x + 6 + (F.frame % 3), y - 2, 1, 1); } } break;
+    // a plain sign is a stone tablet from the pack
+    case 'sign': if (!e.sprite) ctx.drawImage(tileset('element'), 4 * 16, 2 * 16, 16, 16, x, y, 16, 16); else if (e.sprite === 'stone') { ctx.drawImage(stoneArt(), x, y - 4); if (F.frame % 50 < 25) { ctx.fillStyle = '#c0fff8'; ctx.fillRect(x + 6 + (F.frame % 3), y - 2, 1, 1); } } break;
     default: break;
   }
 }

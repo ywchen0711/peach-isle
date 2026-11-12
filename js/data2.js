@@ -344,6 +344,13 @@ Object.assign(SHOPS, {
   isle2: ['millet', 'honeycomb', 'antidote', 'wakeup', 'smoke', 'kunai', 'fuda_holy', 'steelsword', 'armor', 'charmcoat', 'chainmail', 'tengucoat'],
 });
 ITEMS.mochi.price = 60;
+// pictures for the first act's items, so every list lines up (armour and a few charms have no fitting picture in the pack)
+Object.entries({
+  kibi: 'SeedBig1', honey: 'Honey', yomogi: 'SeedBig2', sakura: 'Seed2', sanshoku: 'SeedLarge', millet: 'Seed1', honeycomb: 'Gourd', mugwort: 'Grass', petal: 'SeedLargeWhite',
+  antidote: 'Medipack', smoke: 'Rock', woodsword: 'w_Sword', ironsword: 'w_Sword2', steelsword: 'w_BigSword', peachsword: 'w_Katana', fang: 'w_Bone', ironfang: 'w_Sai', wolffang: 'Kunai',
+  stick: 'Branch', bostaff: 'w_Stick', ruyi: 'w_MagicWand', talon: 'w_Fork', steeltalon: 'Shuriken', phoenix: 'feather',
+  omamori: 'Letter2', flute: 'PanFlute', peachseal: 'Coin2', boatpass: 'Letter3', sprout: 'Seed3',
+}).forEach(([id, icon]) => { if (ITEMS[id] && !ITEMS[id].icon) ITEMS[id].icon = icon; });
 
 // what the bestiary says; every monster in the game has a line
 export const LORE = {

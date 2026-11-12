@@ -39,7 +39,7 @@ const BG = {
   reef: { sky: ['#082c58', '#2878b0'], ground: ['floor', 1, 1], back: [['nature', 13, 8, 2, 2]], bubbles: true, dim: 0.12 },
   palace: { sky: ['#0c3a60', '#4aa0c0'], ground: ['interiorfloor', 16, 7], back: [], wall: true, bubbles: true },
   sea: { sky: ['#3070c0', '#a8d0f0'], ground: ['water', 5, 13], sea: true, back: [] },
-  islet: { sky: ['#58a8e8', '#d0f0f8'], ground: ['floor', 1, 1], sea: true, back: [['desert', 10, 4, 2, 2], ['desert', 12, 4, 2, 2]] },
+  islet: { sky: ['#58a8e8', '#d0f0f8'], ground: ['floor', 1, 1], sea: true, back: [['desert', 10, 10, 2, 2], ['desert', 12, 10, 2, 2]] },
   yomi: { sky: ['#06040e', '#2a1438'], ground: ['interiorfloor', 12, 13], back: [['nature', 4, 0, 2, 2]], dim: 0.15 },
   abyss: { sky: ['#000000', '#200820'], ground: ['interiorfloor', 12, 13], back: [], dim: 0.2 },
   festival: { sky: ['#202850', '#b05878'], ground: ['floor', 0, 12], back: [['nature', 14, 0, 2, 2], ['desert', 2, 10, 2, 2], ['desert', 4, 10, 2, 2]] },
