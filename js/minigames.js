@@ -141,14 +141,19 @@ export async function bestiary() {
       ctx.drawImage(fr, 126 + (W - 130 - w) / 2, 12 + (56 - h), w, h);
       const beat = S.book.beat[id] || 0, EL = { fire: L('火', 'fire'), water: L('水', 'water'), wind: L('風', 'wind'), holy: L('聖', 'holy'), thunder: L('雷', 'thunder'), earth: L('土', 'earth'), dark: L('暗', 'dark') };
       let y = 74;
-      text(d.name, 134, y, '#f8e070'); y += 15;
+      // long English names and drop lists wrap inside the window instead of running off the screen
+      for (const l of wrapTo(d.name, W - 146)) { text(l, 134, y, '#f8e070'); y += 15; }
       text(`HP ${beat ? d.hp : '???'}`, 134, y); text(`${L('擊敗', 'Beaten')} ${beat}`, W - 12, y, '#c0d0f8', { align: 'right' }); y += 15;
-      text(`${L('弱點', 'Weak')} ${d.weak ? EL[d.weak] : '─'}`, 134, y, '#f8c0a0'); text(`${L('抗性', 'Resist')} ${d.resist ? EL[d.resist] : '─'}`, 194, y, '#a0c8f8'); y += 15;
+      // weakness and resistance share a line when they fit, otherwise the resistance goes under it
+      const wk = `${L('弱點', 'Weak')} ${d.weak ? EL[d.weak] : '─'}`, rs = `${L('抗性', 'Resist')} ${d.resist ? EL[d.resist] : '─'}`;
+      const two = 134 + textW(wk) + 8 > 194;
+      text(wk, 134, y, '#f8c0a0'); if (two) y += 15;
+      text(rs, two ? 134 : 194, y, '#a0c8f8'); y += 15;
       const dl = d.drop ? (Array.isArray(d.drop[0]) ? d.drop : [d.drop]) : [];
-      text(`${L('掉落', 'Drops')} ${dl.length ? (beat ? dl.map(([it]) => ITEMS[it].name).join(L('、', ', ')) : '???') : '─'}`, 134, y, '#d0f0c0'); y += 15;
+      for (const l of wrapTo(`${L('掉落', 'Drops')} ${dl.length ? (beat ? dl.map(([it]) => ITEMS[it].name).join(L('、', ', ')) : '???') : '─'}`, W - 146)) { text(l, 134, y, '#d0f0c0'); y += 15; }
       if (d.oni || d.redeem) { text(L('可以說服', 'Can be talked down'), 134, y, '#a0e8f8'); y += 15; }
       const lore = LORE[id];
-      if (lore) { const lines = wrapTo(isEn() ? lore[1] : lore[0], W - 146); lines.slice(0, 5).forEach((l, i) => text(l, 134, y + 4 + i * 14, '#e0e0f0')); }
+      if (lore) { const lines = wrapTo(isEn() ? lore[1] : lore[0], W - 146); lines.slice(0, Math.max(0, Math.floor((H - 22 - (y + 4)) / 14) + 1)).forEach((l, i) => text(l, 134, y + 4 + i * 14, '#e0e0f0')); }
     },
   });
 }
@@ -162,7 +167,7 @@ export async function fishLog() {
   const got = fish.filter((id) => S.fish[id]).length;
   let cur = 0;
   await menu(fish.map((id) => ({ label: S.fish[id] ? ITEMS[id].name : '？？？', right: S.fish[id] || '', icon: S.fish[id] ? ITEMS[id].icon : undefined })), {
-    x: 4, y: 4, w: 150, maxRows: 10, title: L(`魚類圖鑑 ${got}/${fish.length}`, `Fish Log ${got}/${fish.length}`), onMove: (i) => { cur = i; },
+    x: 4, y: 4, w: 150, maxRows: 8, title: L(`魚類圖鑑 ${got}/${fish.length}`, `Fish Log ${got}/${fish.length}`), onMove: (i) => { cur = i; },
     drawExtra: () => { const id = fish[cur]; descBox(S.fish[id] ? ITEMS[id].desc : L('還沒釣到。', 'Not caught yet.')); },
   });
 }

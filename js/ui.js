@@ -109,11 +109,20 @@ export function say(name, msg, { top = false, wait = true, keep = false } = {}) 
 // several lines from the same speaker
 export async function talk(name, ...msgs) { for (const m of msgs) await say(name, m); }
 
+// shorten a string with "…" so it fits in w pixels
+export function fit(s, w) {
+  s = String(s);
+  if (textW(s) <= w) return s;
+  while (s.length > 1 && textW(s + '…') > w) s = s.slice(0, -1);
+  return s.trimEnd() + '…';
+}
+
 // ---------- list menus ----------
 // items: [{ label, right, disabled, color }] or strings
 export function menu(items, { x = 150, y = 60, w, cols = 1, cancel = true, title, start = 0, onMove, rowH = 16, maxRows = 9, drawExtra } = {}) {
   items = items.map((it) => (typeof it === 'string' ? { label: it } : it));
-  const colW = w ? Math.floor((w - 20) / cols) : Math.max(...items.map((it) => textW(it.label) + (it.icon ? 16 : 0) + (it.right ? textW(String(it.right)) + 14 : 0))) + 8;
+  // a window sized to its contents never grows past the screen
+  const colW = w ? Math.floor((w - 20) / cols) : Math.min(Math.floor((W - 30) / cols), Math.max(...items.map((it) => textW(it.label) + (it.icon ? 16 : 0) + (it.right ? textW(String(it.right)) + 14 : 0))) + 8);
   w = w || colW * cols + 26;
   const rows = Math.ceil(items.length / cols), vis = Math.min(rows, maxRows);
   const h = vis * rowH + 12 + (title ? 16 : 0);
@@ -148,11 +157,14 @@ export function menu(items, { x = 150, y = 60, w, cols = 1, cancel = true, title
         // an item's picture from the pack, when it has one
         let lx = cx + (anyIcon && !it.icon ? 16 : 0);
         if (it.icon) { const im = lazyImg('assets/items/' + it.icon + '.png'); if (im) { const w2 = Math.min(16, im.width), h2 = Math.min(16, im.height); ctx.drawImage(im, 0, 0, w2, h2, cx - 1 + (16 - w2) / 2 | 0, cy - 2 + (14 - h2) / 2 | 0, w2, h2); } lx += 16; }
-        text(it.label, lx, cy, it.disabled ? '#8088a8' : it.color || '#f8f8f8');
-        if (it.right !== undefined) text(String(it.right), cx + colW - 6, cy, it.disabled ? '#8088a8' : '#f8f8f8', { align: 'right' });
+        // a long name is shortened with "…" rather than running into the number on its right
+        const rs = it.right !== undefined ? String(it.right) : '';
+        text(fit(it.label, cx + colW - 6 - lx - (rs ? textW(rs) + 6 : 0)), lx, cy, it.disabled ? '#8088a8' : it.color || '#f8f8f8');
+        if (rs) text(rs, cx + colW - 6, cy, it.disabled ? '#8088a8' : '#f8f8f8', { align: 'right' });
       }
-      if (this.scroll > 0 && (frame >> 3) % 2) text('▲', x + w - 14, y + 2, '#f8e070');
-      if (this.scroll + vis < rows && (frame >> 3) % 2) text('▼', x + w - 14, y + h - 14, '#f8e070');
+      // the more-above / more-below arrows sit on the window's frame, clear of the numbers in the right column
+      if (this.scroll > 0 && (frame >> 3) % 2) text('▲', x + w / 2, y - 5, '#f8e070', { align: 'center' });
+      if (this.scroll + vis < rows && (frame >> 3) % 2) text('▼', x + w / 2, y + h - 8, '#f8e070', { align: 'center' });
       const r = Math.floor(this.i / cols) - this.scroll;
       ctx.drawImage(HAND, x + 4 + (this.i % cols) * colW + ((frame >> 3) % 2), oy + r * rowH + 1);
       if (drawExtra) drawExtra(this.i);

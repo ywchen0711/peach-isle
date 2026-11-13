@@ -111,7 +111,7 @@ const SPELL_DESC = {
   peachcut:  ['聖屬性的一斬，攻擊一個敵人。怕聖屬性的妖怪和怨靈會受到加倍傷害。', 'A holy slash at one enemy. Spirits and ghosts that fear holy power take double.'],
   blossom:   ['桃花瓣化成刀刃，以聖屬性攻擊全部敵人。', 'Peach petals turn to blades and strike every enemy with holy power.'],
   guard:     ['靜下心來，提升自己的防禦力，持續 4 回合。', 'Steady the heart: raises your own defence for 4 turns.'],
-  bark:      ['大聲一吠，讓所有敵人有七成機率睡著（頭目無效）。睡著的敵人被打就會醒。', 'A huge bark that sends every enemy to sleep 70% of the time (not bosses). A sleeping foe wakes when hit.'],
+  bark:      ['大聲一吠，讓所有敵人有七成機率睡著（頭目無效）。睡著的敵人被打就會醒。', 'A huge bark: 70% chance to put every enemy to sleep (not bosses). Sleepers wake when hit.'],
   bite:      ['狠狠咬住一個敵人，造成傷害。', 'Sinks teeth into one enemy.'],
   sniffout:  ['嗅出敵人的破綻，全體夥伴力量提升，持續 4 回合。', "Sniffs out the enemy's weak spots: the whole party's strength rises for 4 turns."],
   pebble:    ['丟石子攻擊一個敵人。花費少，隨時可用。', 'Throws a pebble at one enemy. Cheap and always handy.'],

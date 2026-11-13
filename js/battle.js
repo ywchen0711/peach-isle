@@ -271,7 +271,7 @@ async function commandMenu(h, canBack) {
     if (r === 0) { const t = await pickFoe(); if (t) return { type: 'attack', target: t }; }
     if (r === 1) {
       const list = spellsOf(h);
-      const k = await menu(list.map((id) => ({ label: SPELLS[id].name, right: SPELLS[id].mp, disabled: SPELLS[id].mp > h.mp })), { x: 60, y: 44, w: 140, title: `${h.name}　${L('氣', 'Ki')} ${h.mp}`, maxRows: 6, drawExtra: (i) => descBox(SPELLS[list[i]].desc, 2) });
+      const k = await menu(list.map((id) => ({ label: SPELLS[id].name, right: SPELLS[id].mp, disabled: SPELLS[id].mp > h.mp })), { x: isEn() ? 28 : 60, y: 56, w: isEn() ? 200 : 140, title: `${h.name}　${L('氣', 'Ki')} ${h.mp}`, maxRows: 5, drawExtra: (i) => descBox(SPELLS[list[i]].desc, 2) });
       if (k < 0) continue;
       const id = list[k], t = await pickTarget(SPELLS[id].target, h);
       if (t !== null) return { type: 'magic', id, target: t };
@@ -280,7 +280,7 @@ async function commandMenu(h, canBack) {
     if (r === 3) {
       const list = Object.keys(S.inv).filter((id) => ITEMS[id].use && ITEMS[id].use !== 'learn' && ITEMS[id].use !== 'seed');
       if (!list.length) { sfx('buzz'); continue; }
-      const k = await menu(list.map((id) => ({ label: ITEMS[id].name, right: S.inv[id] })), { x: 60, y: 30, w: 140, title: L('道具', 'Items'), maxRows: 6 });
+      const k = await menu(list.map((id) => ({ label: ITEMS[id].name, right: S.inv[id] })), { x: isEn() ? 28 : 60, y: 30, w: isEn() ? 200 : 140, title: L('道具', 'Items'), maxRows: 6 });
       if (k < 0) continue;
       const id = list[k], it = ITEMS[id];
       if (it.use === 'escape') { if (!B.canFlee) { sfx('buzz'); continue; } addItem(id, -1); return { type: 'flee', smoke: true }; }
