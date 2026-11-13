@@ -12,7 +12,7 @@ import { S, stats, spellsOf, gainExp, addItem, count, gearOf } from './party.js'
 import { physical, magic, healAmount, foeAction } from './rules.js';
 import { input } from './input.js';
 import { sfx, playMusic } from './audio.js';
-import { UI, menu, uiTick, wrap, descBox } from './ui.js';
+import { UI, menu, uiTick, wrap, descBox, statusTags, tagPages, drawTags } from './ui.js';
 
 let B = null;
 export const isBattle = () => !!B;
@@ -316,7 +316,11 @@ function pickFoe(ok = () => true) {
         if (input.pressed('a')) { sfx('ok'); done(list[i]); }
         if (input.pressed('b')) { sfx('cancel'); done(null); }
       },
-      draw() { const f = list[i]; if (!f) return; ctx.drawImage(HAND_D, Math.round(f.x - 5), Math.round(f.base - f.ah - 10 + ((B.t >> 3) % 2))); windowBox(4, 4, W - 8, 24); text(f.name, W / 2, 10, '#f8f8f8', { align: 'center' }); },
+      draw() { const f = list[i]; if (!f) return; ctx.drawImage(HAND_D, Math.round(f.x - 5), Math.round(f.base - f.ah - 10 + ((B.t >> 3) % 2))); windowBox(4, 4, W - 8, 24);
+        // the monster's ailments and buffs ride along after its name
+        const tags = statusTags(f.status, f.buffs), page = tags.length ? tagPages(tags, W - 40 - textW(f.name))[0] : [], tw = page.reduce((a, t) => a + textW(t.s) + 3, 5), x0 = W / 2 - (textW(f.name) + (page.length ? tw : 0)) / 2;
+        text(f.name, x0, 10, '#f8f8f8'); drawTags(page, x0 + textW(f.name) + 6, 10);
+      },
     };
     const done = (v) => { UI_pop(w); res(v); };
     UI_push(w);
@@ -883,10 +887,10 @@ export function drawBattle() {
     const b = heroBox(i), s = stats(h), fx = B.heroFx[h.id] || {};
     const oy = fx.hit ? ((fx.hit % 4) < 2 ? 1 : -1) : 0;
     const dead = h.hp <= 0, low = h.hp < s.maxhp / 4;
-    text(h.name, b.x + 8, b.y + oy, B.active === h ? '#f8e070' : dead ? '#f86060' : '#f8f8f8');
-    if (h.status.poison) text(L('毒', 'P'), b.x + 66, b.y + oy, '#c080f8');
-    else if (h.status.seal) text(L('封', 'S'), b.x + 66, b.y + oy, '#f8a0f8');
-    else if (h.status.swallowed) text(L('吞', 'G'), b.x + 66, b.y + oy, '#f8e070');
+    // statuses and buffs take turns with the name, about a second each
+    const pages = dead ? [] : tagPages(statusTags(h.status, h.buffs), 70), ph = Math.floor(B.t / 60) % (pages.length + 1);
+    if (ph === 0) text(h.name, b.x + 8, b.y + oy, B.active === h ? '#f8e070' : dead ? '#f86060' : '#f8f8f8');
+    else drawTags(pages[ph - 1], b.x + 8, b.y + oy);
     text('HP', b.x + 80, b.y + oy, '#f8c0a0');
     text(`${h.hp}/${s.maxhp}`, b.x + 152, b.y + oy, dead ? '#f86060' : low ? '#f8e070' : '#f8f8f8', { align: 'right' });
     text(L('氣', 'Ki'), b.x + 160, b.y + oy, '#a0d8f8');

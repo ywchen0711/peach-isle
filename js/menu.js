@@ -3,7 +3,7 @@ import { ctx, W, H, text, textW, windowBox, bar } from './gfx.js';
 import { sprite } from './sprites.js';
 import { ITEMS, SPELLS, SPECIALS, HEROES, expFor } from './data.js';
 import { S, stats, spellsOf, addItem, count, save } from './party.js';
-import { menu, panel, notice, ask, pressKey, descBox } from './ui.js';
+import { menu, panel, notice, ask, pressKey, descBox, statusTags, tagPages, drawTags, tagPage } from './ui.js';
 import { sfx, vol, setVolumes, music, setMusic } from './audio.js';
 import { healAmount } from './rules.js';
 import { L, LANG, isEn, setLang } from './i18n.js';
@@ -22,7 +22,9 @@ function drawParty(x, y, w, sel = -1) {
     text('Lv ' + m.lv, x + w - 8, yy, '#f8e070', { align: 'right' });
     text(`HP ${m.hp}/${s.maxhp}`, x + 30, yy + 13, m.hp <= 0 ? '#f86060' : m.hp < s.maxhp / 4 ? '#f8e070' : '#f8f8f8');
     text(`${L('氣', 'Ki')} ${m.mp}/${s.maxmp}`, x + 30, yy + 25, '#c0d0f8');
-    if (m.status.poison) text(L('毒', 'PSN'), x + w - 8, yy + 13, '#c080f8', { align: 'right' });
+    // lingering statuses (poison...) at the right of the HP line, a page a second
+    const tags = m.hp > 0 ? statusTags(m.status) : [];
+    if (tags.length) drawTags(tagPage(tagPages(tags, w - 44 - textW(`HP ${m.hp}/${s.maxhp}`))), x + w - 8, yy + 13, 'right');
   });
 }
 async function pickMember(title, filter = () => true) {
@@ -185,6 +187,8 @@ async function statusMenu() {
     windowBox(4, 4, W - 8, H - 8);
     ctx.drawImage(sprite(m.id).d[0], 14, 14);
     text(`${m.name}　${HEROES[m.id].title}`, 38, 12, '#f8e070');
+    const tags = m.hp > 0 ? statusTags(m.status) : [], tx = 48 + textW(`${m.name}　${HEROES[m.id].title}`);
+    if (tags.length) drawTags(tagPage(tagPages(tags, W - 14 - tx)), tx, 12);
     // the title takes the first line; level, experience and what is left to the next level share the second
     text(`Lv ${m.lv}`, 38, 28);
     text(`${L('經驗', 'EXP')} ${m.exp}`, 92, 28); text(`${L('下一級', 'Next')} ${Math.max(0, expFor(m.lv + 1) - m.exp)}`, 170, 28);

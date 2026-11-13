@@ -3,8 +3,37 @@
 import { ctx, W, H, text, textW, windowBox, HAND, HAND_D } from './gfx.js';
 import { input } from './input.js';
 import { sfx } from './audio.js';
-import { speaker } from './i18n.js';
+import { speaker, L } from './i18n.js';
 import { lazyImg } from './assets.js';
+
+// short coloured status tags so the windows show who is poisoned, asleep, guarded... at a glance
+const STTAG = {
+  poison: ['毒', 'PSN', '#c080f8'], sleep: ['眠', 'SLP', '#c0c0ff'], seal: ['封', 'SEL', '#f8a0f8'], swallowed: ['吞', 'EATN', '#f8e070'], weak: ['防↓', 'DEF↓', '#f8c070'],
+};
+const BUFTAG = {
+  str: ['力↑', 'STR↑', '#f8a060'], def: ['防↑', 'DEF↑', '#f8d870'], int: ['智↑', 'INT↑', '#d0a0f8'], agi: ['快', 'HST', '#70f0f8'],
+  barrier: ['盾', 'PRT', '#a0e0f8'], evade: ['閃', 'EVA', '#e0e8ff'], regen: ['再生', 'RGN', '#80f8a0'],
+};
+// status: ailments, buffs: turn-counted buffs (either may be missing)
+export function statusTags(status, buffs) {
+  const out = [];
+  for (const [o, T] of [[status, STTAG], [buffs, BUFTAG]]) for (const k of Object.keys(o || {})) if (o[k] && T[k]) out.push({ s: L(T[k][0], T[k][1]), col: T[k][2] });
+  return out;
+}
+// split tags into pages that each fit in maxW pixels
+export function tagPages(tags, maxW) {
+  const pages = []; let cur = [], w = 0;
+  for (const t of tags) { const tw = textW(t.s); if (cur.length && w + tw > maxW) { pages.push(cur); cur = []; w = 0; } cur.push(t); w += tw + 3; }
+  if (cur.length) pages.push(cur);
+  return pages;
+}
+// draw one page of tags (pages take turns about once a second); align 'right' ends at x
+export function drawTags(page, x, y, align = 'left') {
+  if (!page || !page.length) return;
+  let cx = align === 'right' ? x - page.reduce((a, t) => a + textW(t.s) + 3, -3) : x;
+  for (const t of page) { text(t.s, cx, y, t.col); cx += textW(t.s) + 3; }
+}
+export const tagPage = (pages) => pages[Math.floor(performance.now() / 1000) % pages.length];
 
 const stack = [];
 export const UI = {
