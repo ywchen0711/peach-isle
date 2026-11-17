@@ -93,6 +93,8 @@ export function loadMap(id, x, y, dir = 'd') {
   }
   F.kinds = kinds; F.grid = grid; F.index = index;
   built.kinds = kinds; built.tile = (X, Y) => grid[Y * built.w + X];
+  // give the old map's pictures back at once: iOS limits the memory all canvases may use together
+  if (F.gfx) for (const c of [...F.gfx.frames, F.gfx.upper]) if (c) { c.width = 0; c.height = 0; }
   F.gfx = renderMap(built);
   F.ents = built.ents.map((e) => ({ ...e }));
   // per-entity setup

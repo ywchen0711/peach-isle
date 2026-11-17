@@ -3,6 +3,7 @@
 import { ITEMS, RECIPES, SHOPS } from './data.js';
 import { S, count } from './party.js';
 import { L } from './i18n.js';
+import { K } from './input.js';
 
 const actor = (E, id, x, y, dir, sprite = id) => E.spawn({ type: 'npc', id: 'a_' + id, sprite, x, y, dir });
 const name = (id) => ({ momo: L('桃丸', 'Momomaru'), shiro: L('小白', 'Shiro'), natsume: L('棗', 'Natsume'), kiji: L('雉', 'Kiji') }[id]);
@@ -194,7 +195,7 @@ export const SCRIPTS = {
       L('（我要找出是誰。主人的笛子被他們搶走了……我聞得到，就在森林深處。）', "(I will find who it was. They took my master's flute... I can smell it, deep in the forest.)"));
     await E.say(L('桃丸', 'Momomaru'), L('那我們一起去吧。我也想知道真相。', "Then let's go together. I want the truth too."));
     E.join('shiro', e);
-    await E.say(null, L('小白成為了夥伴！\n小白能聞出埋在土裡的東西。面對閃亮的土堆按 Z 看看吧。', 'Shiro joined the party!\nShiro can sniff out things buried in the ground. Face a glinting patch of earth and press Z.'));
+    await E.say(null, K(L('小白成為了夥伴！\n小白能聞出埋在土裡的東西。面對閃亮的土堆按 Z 看看吧。', 'Shiro joined the party!\nShiro can sniff out things buried in the ground. Face a glinting patch of earth and press Z.')));
   },
   async fo_gate(E) {
     if (!S.flags.forestKey) { await E.say(null, L('竹子編的門上了鎖。……鎖頭上沾著土，鑰匙也許被埋在哪裡了。', 'A woven bamboo gate, locked. ...There is soil on the lock. Maybe the key was buried somewhere.')); return; }
@@ -237,7 +238,7 @@ export const SCRIPTS = {
     await E.talk(L('棗', 'Natsume'), L('……你們這些人類真奇怪。自己都不夠吃了還分給別人。', "...You humans are strange. Barely enough for yourselves and you still share."),
       L('好吧。我帶你們上山，去揍那隻胖狸。山上的藤蔓我閉著眼睛都能爬。', "Fine. I'll take you up the mountain to punch that fat tanuki. I could climb these vines with my eyes shut."));
     E.join('natsume', e);
-    await E.say(null, L('棗成為了夥伴！\n棗能爬上岩壁的藤蔓。面對藤蔓按 Z 吧。', 'Natsume joined the party!\nNatsume can climb the vines on the cliffs. Face a vine and press Z.'));
+    await E.say(null, K(L('棗成為了夥伴！\n棗能爬上岩壁的藤蔓。面對藤蔓按 Z 吧。', 'Natsume joined the party!\nNatsume can climb the vines on the cliffs. Face a vine and press Z.')));
   },
   async mo_baby(E) { await E.say(L('小猴子', 'Little Monkey'), S.flags.boss2 ? L('吱吱！栗子林回來了！', 'Squeak! We got the chestnut groves back!') : L('吱……肚子餓……', 'Squeak... hungry...')); },
   async mo_boss(E) {
@@ -292,7 +293,7 @@ export const SCRIPTS = {
     await E.say(L('桃丸', 'Momomaru'), L('跟我們走吧。害怕的話，就不要往下看，只要看著我們就好。', "Come with us. If you're scared, don't look down. Just look at us."));
     await E.say(L('雉', 'Kiji'), L('……只看著你們。……嗯。我試試看。', '...Just look at you. ...Mm. I\'ll try.'));
     E.join('kiji', e);
-    await E.say(null, L('雉成為了夥伴！\n雉能飛到搆不到的地方。在停鳥木樁前按 Z，她會去敲響對面的鈴鐺。', "Kiji joined the party!\nKiji can fly where nobody can reach. Press Z at a bird's perch and she will ring the bell across the way."));
+    await E.say(null, K(L('雉成為了夥伴！\n雉能飛到搆不到的地方。在停鳥木樁前按 Z，她會去敲響對面的鈴鐺。', "Kiji joined the party!\nKiji can fly where nobody can reach. Press Z at a bird's perch and she will ring the bell across the way.")));
   },
   async cl_gate(E) { await E.say(null, L('通往崖頂的石門關著。門上的鈴鐺好像是開關。', 'The stone gate to the summit is shut. The bell above it seems to work it.')); },
   async cl_boss(E) {

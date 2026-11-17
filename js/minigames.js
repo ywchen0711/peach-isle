@@ -1,7 +1,7 @@
 // The pastimes of the later chapters: fishing, pounding mochi at the festival, the bestiary and the fish log,
 // the oni blacksmith's forge, the oni dojo's ranks, and the shrine monk who collects magatama.
 import { ctx, W, H, text, textW, windowBox, bar, HAND } from './gfx.js';
-import { input } from './input.js';
+import { input, K } from './input.js';
 import { sfx } from './audio.js';
 import { widget, menu, descBox, notice } from './ui.js';
 import { ITEMS, ENEMIES } from './data.js';
@@ -53,19 +53,19 @@ export function fishing(pool) {
       windowBox(x, y, w, h);
       for (let k = 0; k < 8; k++) { ctx.fillStyle = `rgb(${30 + k * 6},${70 + k * 10},${140 + k * 8})`; ctx.fillRect(x + 6, y + 24 + k * 8, w - 12, 8); }
       text(L('釣魚', 'Fishing'), x + 10, y + 6, '#f8e070');
-      text(L('X：收竿', 'X: reel in'), x + w - 10, y + 6, '#a0a8c0', { align: 'right' });
+      text(K(L('X：收竿', 'X: reel in')), x + w - 10, y + 6, '#a0a8c0', { align: 'right' });
       const bob = this.phase === 'bite' ? Math.round(Math.sin(this.t) * 3) + 3 : Math.round(Math.sin(this.t / 15) * 1.5);
       ctx.fillStyle = '#f8f8f8'; ctx.fillRect(x + w / 2, y + 26, 1, 22 + bob);
       ctx.fillStyle = '#e84040'; ctx.fillRect(x + w / 2 - 2, y + 46 + bob, 5, 3); ctx.fillStyle = '#ffffff'; ctx.fillRect(x + w / 2 - 2, y + 49 + bob, 5, 2);
       if (this.phase === 'wait') { const fx = x + w / 2 - 30 + Math.sin(this.t / 25) * 24; ctx.fillStyle = 'rgba(10,20,40,0.45)'; ctx.fillRect(Math.round(fx), y + 64, 14, 4); text(L('等魚上鉤……', 'Waiting for a bite...'), x + w / 2, y + 84, '#e0f0ff', { align: 'center' }); }
-      if (this.phase === 'bite' && (this.t >> 2) % 2) text(L('上鉤了！按 Z！', 'A bite! Press Z!'), x + w / 2, y + 74, '#f8e070', { align: 'center' });
+      if (this.phase === 'bite' && (this.t >> 2) % 2) text(K(L('上鉤了！按 Z！', 'A bite! Press Z!')), x + w / 2, y + 74, '#f8e070', { align: 'center' });
       if (this.phase === 'reel') {
         const bx = x + (w - 160) / 2, by = y + 92;
         ctx.fillStyle = '#202838'; ctx.fillRect(bx - 1, by - 1, 162, 10);
         ctx.fillStyle = '#58c060'; ctx.fillRect(bx + this.zone, by, this.zw, 8);
         ctx.fillStyle = '#f8f8f8'; ctx.fillRect(bx + Math.round(this.needle) - 1, by - 3, 3, 14);
         for (let k = 0; k < 3; k++) { ctx.fillStyle = k < this.hit ? '#58e070' : '#404858'; ctx.fillRect(x + 12 + k * 10, y + h - 14, 7, 7); ctx.fillStyle = k < this.miss ? '#f05050' : '#404858'; ctx.fillRect(x + w - 40 + k * 10, y + h - 14, 7, 7); }
-        text(L('綠色時按 Z', 'Z on the green'), x + w / 2, y + 66, '#e0f0ff', { align: 'center' });
+        text(K(L('綠色時按 Z', 'Z on the green')), x + w / 2, y + 66, '#e0f0ff', { align: 'center' });
         if (this.msgT) text(this.msg, x + w / 2, y + 108, '#f8e070', { align: 'center' });
       }
       if (this.phase === 'done') text(this.msg, x + w / 2, y + 74, this.result ? '#f8e070' : '#f0c0c0', { align: 'center' });

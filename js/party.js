@@ -82,6 +82,7 @@ const KEY = 'peachisle-save';
 export function save(slot = 0) {
   try { localStorage.setItem(KEY + slot, JSON.stringify({ ...S, savedAt: Date.now() })); return true; } catch (e) { return false; }
 }
+export function dropSave(slot) { try { localStorage.removeItem(KEY + slot); } catch (e) { /* private mode */ } }
 export function hasSave(slot = 0) { try { return !!localStorage.getItem(KEY + slot); } catch (e) { return false; } }
 export function saveInfo(slot = 0) {
   try { const d = JSON.parse(localStorage.getItem(KEY + slot)); return d; } catch (e) { return null; }

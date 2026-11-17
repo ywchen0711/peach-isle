@@ -5,6 +5,7 @@ import { ITEMS, SPELLS, SPECIALS, HEROES, expFor } from './data.js';
 import { S, stats, spellsOf, addItem, count, save } from './party.js';
 import { menu, panel, notice, ask, pressKey, descBox, statusTags, tagPages, drawTags, tagPage, fit } from './ui.js';
 import { sfx, vol, setVolumes, music, setMusic } from './audio.js';
+import { touchUI } from './input.js';
 import { healAmount } from './rules.js';
 import { L, LANG, isEn, setLang } from './i18n.js';
 import { bestiary, fishLog } from './minigames.js';
@@ -208,7 +209,7 @@ async function statusMenu() {
     }
     const my = ey + 17;
     text(L('魔法', 'Magic'), 14, my, '#a0c0f8');
-    text(L('Z：查看招式說明', 'Z: read the skills'), W - 14, my, '#a0a8c0', { align: 'right' });
+    text(touchUI() ? L('A：查看招式說明', 'A: read the skills') : L('Z：查看招式說明', 'Z: read the skills'), W - 14, my, '#a0a8c0', { align: 'right' });
     // as many skills as fit, each shortened to its column; the rest are counted (Z lists them all)
     const sp = spellsOf(m).map((s) => SPELLS[s].name), cols = isEn() ? 2 : 3, cw = Math.floor((W - 28) / cols);
     const nrows = Math.floor((200 - (my + 14)) / 13) + 1, cap = nrows * cols, shown = sp.length > cap ? cap - 1 : sp.length;

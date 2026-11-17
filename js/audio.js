@@ -7,9 +7,15 @@ export const vol = { music: 0.55, sfx: 0.7 };
 export const music = { on: true };
 const mv = () => (music.on ? vol.music : 0);
 
+let noAudio = false, primed = false;
 export function initAudio() {
-  if (A) { if (A.state === 'suspended') A.resume(); return; }
-  A = new (window.AudioContext || window.webkitAudioContext)();
+  unlockMedia();
+  if (A) { wake(); return; }
+  if (noAudio) return;
+  // iOS 17+: play like a game, not like a web page, so the silent switch does not mute the music
+  try { if (navigator.audioSession) navigator.audioSession.type = 'playback'; } catch (e) { /* older iOS */ }
+  try { A = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { A = null; }
+  if (!A) { noAudio = true; return; } // no Web Audio in this browser: the game plays on without the sound chip
   master = A.createGain(); master.gain.value = 0.8;
   const lp = A.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 7000;
   master.connect(lp); lp.connect(A.destination);
@@ -29,10 +35,21 @@ export function initAudio() {
   noiseBuf = A.createBuffer(1, A.sampleRate, A.sampleRate);
   const ch = noiseBuf.getChannelData(0);
   for (let i = 0; i < ch.length; i++) ch[i] = Math.random() * 2 - 1;
-  if (A.state === 'suspended') A.resume();
-  if (pending && el) { pending = null; el.play().catch(() => {}); }
+  wake();
 }
-export function setVolumes() { if (el) el.volume = Math.min(1, mv() * 0.9); if (!A) return; musicBus.gain.value = mv(); sfxBus.gain.value = vol.sfx; }
+// iOS lets sound start only inside a tap or key handler, and puts it to sleep ('interrupted') after a
+// call, Siri or the lock screen: resume it and play one silent sample so the speaker is really on
+function wake() {
+  if (!A || document.hidden) return;
+  if (A.state !== 'running') { try { const p = A.resume(); if (p && p.catch) p.catch(() => {}); } catch (e) { /* closed */ } primed = false; }
+  if (primed) return;
+  try { const s = A.createBufferSource(); s.buffer = A.createBuffer(1, 1, 22050); s.connect(A.destination); s.start(0); primed = true; } catch (e) { /* ignore */ }
+}
+function sleep() {
+  if (A && A.state === 'running') { try { const p = A.suspend(); if (p && p.catch) p.catch(() => {}); } catch (e) { /* closed */ } }
+  pauseMedia();
+}
+export function setVolumes() { if (el) { el.volume = Math.min(1, mv() * 0.9); el.muted = !music.on; } if (!A) return; musicBus.gain.value = mv(); sfxBus.gain.value = vol.sfx; }
 
 const freq = (m) => 440 * Math.pow(2, (m - 69) / 12);
 
@@ -92,29 +109,65 @@ function drum(kind, t, v, out) {
 // a few story moments reuse a track under another name; 'victory' is a short jingle
 const TRACK = { town: 'village', tower: 'temple', gameover: 'lament', victory: null, battle2: 'dojo' };
 const JINGLE = { victory: 'victory' };
-let el = null, pending = null;
+// iOS Safari before 18.4 cannot play Ogg, so every track also comes as AAC (.m4a)
+const EXT = (() => { try { return new Audio().canPlayType('audio/ogg; codecs="vorbis"') ? '.ogg' : '.m4a'; } catch (e) { return '.m4a'; } })();
+const url = (name) => 'assets/music/' + (TRACK[name] || name) + EXT;
+const loops = (name) => name !== 'ending' && name !== 'trueend';
+// Two <audio> elements are reused for every track (one fades out while the other starts), and one
+// more for jingles. iOS lets an element play from code only once it has been started inside a tap,
+// so the first tap starts all three (the idle ones on a moment of silence). iOS also ignores
+// .volume, so the music switch uses .muted.
+const SILENCE = (() => {
+  try {
+    const n = 400, b = new ArrayBuffer(44 + n * 2), v = new DataView(b), w = (o, s) => { for (let i = 0; i < s.length; i++) v.setUint8(o + i, s.charCodeAt(i)); };
+    w(0, 'RIFF'); v.setUint32(4, 36 + n * 2, true); w(8, 'WAVEfmt '); v.setUint32(16, 16, true); v.setUint16(20, 1, true); v.setUint16(22, 1, true);
+    v.setUint32(24, 8000, true); v.setUint32(28, 16000, true); v.setUint16(32, 2, true); v.setUint16(34, 16, true); w(36, 'data'); v.setUint32(40, n * 2, true);
+    return URL.createObjectURL(new Blob([b], { type: 'audio/wav' }));
+  } catch (e) { return ''; }
+})();
+const mk = () => { const a = new Audio(); a.preload = 'auto'; return a; };
+const pool = [mk(), mk()], jel = mk();
+let el = null, pi = 0;
 export let currentSong = null;
+const ok = (a) => () => { a.ok = true; };
+function prime(a) {
+  if (a.ok || a.priming || !SILENCE) return;
+  a.priming = true; a.src = SILENCE; a.muted = true;
+  const p = a.play();
+  const done = () => { a.priming = false; if (a.src === SILENCE) { a.pause(); a.muted = false; } };
+  if (p && p.then) p.then(() => { a.ok = true; done(); }, done); else done();
+}
+function unlockMedia() {
+  for (const a of [...pool, jel]) if (a !== el) prime(a);
+  if (el && el.paused && !el.ended) { const p = el.play(); if (p && p.then) p.then(ok(el), () => {}); }
+}
+function pauseMedia() { if (el && !el.paused) { el.pause(); el.wasOn = true; } }
+function resumeMedia() { if (el && el.wasOn) { el.wasOn = false; const p = el.play(); if (p && p.catch) p.catch(() => {}); } }
 export function playMusic(name, { restart = false } = {}) {
   if (JINGLE[name]) { stopMusic(0.2); jingle(JINGLE[name]); return; }
   if (currentSong === name && !restart && el) return;
   stopMusic(0.4);
   currentSong = name;
   if (!name) return;
-  const a = new Audio('assets/music/' + (TRACK[name] || name) + '.ogg');
-  a.loop = name !== 'ending' && name !== 'trueend'; a.volume = Math.min(1, mv() * 0.9);
+  pi = 1 - pi;
+  const a = pool[pi], src = new URL(url(name), location.href).href;
+  a.priming = false;
+  if (a.src !== src) a.src = src; else a.currentTime = 0;
+  a.loop = loops(name); a.volume = Math.min(1, mv() * 0.9); a.muted = !music.on; a.wasOn = false;
   el = a;
-  if (!A) { pending = name; return; }
-  a.play().catch(() => { pending = name; });
+  // before the first tap this is refused, and the first tap starts it
+  const p = a.play(); if (p && p.then) p.then(ok(a), () => {});
 }
 export function stopMusic(fade = 0) {
   const a = el; el = null; currentSong = null;
   if (!a) return;
   if (!fade) { a.pause(); return; }
   const v0 = a.volume, t0 = performance.now();
-  const step = () => { const k = (performance.now() - t0) / (fade * 1000); if (k >= 1) { a.pause(); return; } a.volume = v0 * (1 - k); requestAnimationFrame(step); };
+  // stop fading if this element has been given the next track meanwhile
+  const step = () => { if (a === el) return; const k = (performance.now() - t0) / (fade * 1000); if (k >= 1) { a.pause(); return; } a.volume = v0 * (1 - k); requestAnimationFrame(step); };
   step();
 }
-function jingle(n) { const a = new Audio('assets/jingle/' + n + '.wav'); a.volume = Math.min(1, vol.sfx * 0.8); a.play().catch(() => {}); }
+function jingle(n) { jel.priming = false; jel.src = 'assets/jingle/' + n + '.wav'; jel.volume = Math.min(1, vol.sfx * 0.8); jel.muted = false; const p = jel.play(); if (p && p.catch) p.catch(() => {}); }
 export const songLengths = () => ({});
 
 // ---------- sound effects ----------
@@ -193,4 +246,10 @@ if (typeof document !== 'undefined') {
   const b = document.getElementById('musicBtn');
   if (b) { b.classList.toggle('off', !music.on); b.addEventListener('click', (e) => { e.stopPropagation(); initAudio(); setMusic(!music.on); }); }
   addEventListener('keydown', (e) => { if (e.code === 'KeyM' && !e.repeat) setMusic(!music.on); });
+  // any tap, click or key unlocks the sound: iOS accepts touchend and click (not touchstart), and the
+  // on-screen pad cancels the click, so touchend is caught for the whole page before the pad sees it
+  for (const ev of ['touchend', 'click', 'keydown']) addEventListener(ev, initAudio, { capture: true, passive: true });
+  // the sound sleeps while the page is hidden and wakes when it comes back
+  document.addEventListener('visibilitychange', () => { if (document.hidden) sleep(); else { wake(); resumeMedia(); } });
+  addEventListener('pageshow', () => { wake(); resumeMedia(); });
 }

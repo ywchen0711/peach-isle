@@ -29,6 +29,7 @@ export function present(scan) {
   if (Z !== k) { Z = k; game.width = W * k; game.height = H * k; ctx.setTransform(k, 0, 0, k, 0, 0); ctx.imageSmoothingEnabled = false; }
   if (!scan || k < 2) return;
   if (!lines || lines.k !== k) {
+    if (lines) { lines.width = 0; lines.height = 0; } // free the old size first (iOS canvas memory)
     lines = canvas(W * k, H * k); lines.k = k;
     lines.x.fillStyle = k >= 3 ? 'rgba(0,0,0,0.28)' : 'rgba(0,0,0,0.16)';
     for (let y = 0; y < H; y++) lines.x.fillRect(0, y * k + k - 1, W * k, 1);

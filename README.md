@@ -78,6 +78,16 @@ The story, characters and dialogue are all original. Only the outline of the fol
 
 Switch between Chinese and English on the title screen or in Config. The menu's Records page holds the bestiary, the fish log and your magatama count.
 
+## iPhone and iPad
+
+- The touch pad shows up by itself on phones and tablets (iPads too, even though iPadOS says it is a Mac). Upright, it sits under the picture; turned sideways, the d-pad and the buttons sit on either side of it. The notch and the home bar never cover anything.
+- Hints on screen name the pad's buttons (A, B, MENU) instead of the keys while the pad is showing.
+- Sound starts with your first tap. If a phone call, Siri or the lock screen cuts the sound off, the next tap brings it back. On iOS 17 and later the game plays as a game, so the silent switch does not mute the music.
+- Every music track also comes as an .m4a (AAC) file, because Safari before iOS 18.4 cannot play .ogg. The game picks the format the browser can play. iOS ignores the volume steps for recorded music: there, Music is on or off.
+- Add it to the Home Screen (Share → Add to Home Screen) to play full screen, with its own icon.
+- iOS can close a tab in the background without warning. If that happens while you are walking around, **Continue** on the title screen turns into **Resume** and puts you back where you were. Your save-point save is kept as it was.
+- The game runs at the same speed on 120 Hz screens and in Low Power Mode.
+
 ## Files
 
 - **Story:** `js/story.js` holds part one and the cooking; `js/story2.js` holds parts two and three, the endings and the post-game.
